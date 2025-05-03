@@ -1,0 +1,38 @@
+# Ignore version control data
+.git
+.gitignore
+
+# Ignore build output
+/target
+
+# Ignore local config
+Cargo.lock (optional — if building inside Docker only)
+/.dockerignore
+Dockerfile
+
+# Ignore IDE/editor configs
+**/*.swp
+**/*.swo
+**/*.swn
+*.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Ignore OS / temp files
+*.tmp
+*.bak
+*.old
+*.orig
+
+**/*.rs.bk
+.idea/
+.vscode/
+*.duckdb
+*.duckdb.wal
+.chart/
+.chart_data.db/
+.data/
+.kv_data.db/
+*.csv
+.quantedge_data.db

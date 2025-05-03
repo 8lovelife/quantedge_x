@@ -1,0 +1,17 @@
+/target
+**/*.rs.bk
+Cargo.lock
+.env
+.idea/
+.vscode/
+*.duckdb
+*.duckdb.wal
+.chart/
+.chart_data.db/
+.data/
+.kv_data.db/
+*.csv
+.quantedge_data.db
+.quantedge_data.db.wal
+.DS_Store
+route.sh
