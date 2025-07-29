@@ -11,3 +11,4 @@ pub mod service;
 pub mod sizer;
 pub mod strategy;
 pub mod utils;
+pub mod ws;

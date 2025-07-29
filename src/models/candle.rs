@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 #[derive(Debug, Clone)]
 pub struct Candle {
     pub symbol: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: u64,
     pub open: f64,
     pub high: f64,
     pub low: f64,
