@@ -523,7 +523,7 @@ mod tests {
             let market_data: Vec<MarketData> = ohlcv
                 .iter()
                 .map(|ohlc| MarketData {
-                    timestamp: ohlc.timestamp.to_rfc3339(),
+                    timestamp: ohlc.timestamp.0.to_rfc3339(),
                     close_price: ohlc.close,
                 })
                 .collect();

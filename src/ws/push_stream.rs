@@ -128,7 +128,7 @@ async fn handle_connection(stream: TcpStream, broadcast_map: BroadcastMap) {
                 match client_msg {
                     Some(Ok(Message::Close(_))) => {
                         println!("Client sent close frame");
-                        // let _ = write.send(Message::Close(None)).await;
+                        let _ = write.send(Message::Close(None)).await;
                         break;
                     }
                     Some(Ok(_)) => {
