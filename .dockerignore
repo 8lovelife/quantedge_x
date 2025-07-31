@@ -6,7 +6,6 @@
 /target
 
 # Ignore local config
-Cargo.lock (optional — if building inside Docker only)
 /.dockerignore
 Dockerfile
 
