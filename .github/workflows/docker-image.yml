@@ -31,3 +31,7 @@ jobs:
         context: .
         push: true
         tags: 8lovelife/quantedge_x:latest
+        
+    - name: Trigger Render Deploy Hook
+      run: |
+        curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"        

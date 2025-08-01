@@ -4,6 +4,13 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use axum::{
+    extract::{
+        Query,
+        ws::{WebSocket, WebSocketUpgrade},
+    },
+    response::IntoResponse,
+};
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use reqwest::Url;
@@ -26,7 +33,7 @@ struct SymbolConfig {
 }
 
 #[derive(Serialize, Clone, Debug)]
-struct MarketPriceData {
+pub struct MarketPriceData {
     symbol: String,
     timestamp: u64,
     open: f64,
@@ -36,7 +43,14 @@ struct MarketPriceData {
     volume: f64,
 }
 
-type BroadcastMap = Arc<RwLock<HashMap<(String, u64), broadcast::Sender<MarketPriceData>>>>;
+#[derive(Deserialize, Debug)]
+pub struct WsParams {
+    exchange: Option<String>,
+    symbol: Option<String>,
+    interval_ms: Option<u64>,
+}
+
+pub type BroadcastMap = Arc<RwLock<HashMap<(String, u64), broadcast::Sender<MarketPriceData>>>>;
 
 pub async fn start_ws_server(addr: String) {
     let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
@@ -192,4 +206,53 @@ fn current_ts() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64
+}
+
+pub async fn handle_web_socket(
+    ws: WebSocketUpgrade,
+    Query(params): Query<WsParams>,
+    broadcast_map: axum::extract::Extension<BroadcastMap>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| client_ws(socket, params, broadcast_map.0))
+}
+
+async fn client_ws(mut socket: WebSocket, params: WsParams, broadcast_map: BroadcastMap) {
+    let symbol = params.symbol.unwrap_or_else(|| "BTC/USDT".to_string());
+    let interval_ms = params.interval_ms.unwrap_or(1000);
+    let key = (symbol.clone(), interval_ms);
+
+    let sender = {
+        let mut map = broadcast_map.write().await;
+        map.entry(key.clone())
+            .or_insert_with(|| {
+                let (tx, _) = broadcast::channel(1000);
+                tokio::spawn(start_price_task(symbol.clone(), interval_ms, tx.clone()));
+                tx
+            })
+            .clone()
+    };
+    let mut rx = sender.subscribe();
+
+    loop {
+        tokio::select! {
+            msg = rx.recv() => {
+                match msg {
+                    Ok(data) => {
+                        let json = serde_json::to_string(&data).unwrap();
+                        if socket.send(axum::extract::ws::Message::Text(json)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(broadcast::error::RecvError::Lagged(_)) => {},
+                    Err(_) => break,
+                }
+            }
+            ws_msg = socket.recv() => {
+                match ws_msg {
+                    Some(Ok(axum::extract::ws::Message::Close(_))) | None => break,
+                    _ => {}
+                }
+            }
+        }
+    }
 }

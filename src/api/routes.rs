@@ -9,12 +9,14 @@ use crate::{
         backtest_service::BacktestService, strategy_service::StrategyService,
         user_auth_service::UserAuthService,
     },
+    ws::push_stream::{BroadcastMap, handle_web_socket},
 };
 use axum::{
-    Router,
+    Extension, Router,
     routing::{delete, get, patch, post, put},
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
 
 use super::handlers::{
     add_trade_strategy, appy_strategy_run, backtest_history_data, backtest_run_history,
@@ -64,7 +66,11 @@ pub fn create_router() -> Router {
         user_auth_service,
     };
 
+    let broadcast_map: BroadcastMap = Arc::new(RwLock::new(HashMap::new()));
+
     Router::new()
+        .route("/ws", get(handle_web_socket))
+        .layer(Extension(broadcast_map.clone()))
         .route("/api/user/auth", post(user_auth))
         .route("/api/ping", get(ping))
         .route("/api/login", get(get_current_user))
