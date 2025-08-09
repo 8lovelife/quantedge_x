@@ -13,4 +13,4 @@
 .quantedge_data.db
 .quantedge_data.db.wal
 .DS_Store
-route.sh
+# route.sh
