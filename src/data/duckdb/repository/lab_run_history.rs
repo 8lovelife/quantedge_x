@@ -251,7 +251,6 @@ impl LabRunHistoryRepository {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::duckdb::schema::backtest_run_history::BacktestRun;
 
     use super::*;
     use chrono::{TimeZone, Utc};

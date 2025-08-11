@@ -21,6 +21,9 @@ itertools = "0.12"
 csv = "1"
 tokio-tungstenite = "0.27.0"
 futures-util = "0.3.31"
+bincode = "2.0.1"
+anyhow = "1.0.98"
+async-trait = "0.1.88"
 
 
 [[bin]]

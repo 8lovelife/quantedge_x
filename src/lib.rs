@@ -4,6 +4,7 @@ pub mod domain;
 pub mod engine;
 pub mod executor;
 pub mod indicators;
+pub mod matcher;
 pub mod models;
 pub mod processor;
 pub mod risk;
