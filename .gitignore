@@ -14,3 +14,4 @@
 .quantedge_data.db.wal
 .DS_Store
 # route.sh
+.orderbook_snapshot

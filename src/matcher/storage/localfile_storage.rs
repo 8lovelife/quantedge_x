@@ -6,7 +6,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bincode::{config::standard, encode_into_std_write};
+use anyhow::Ok;
+use bincode::{config::standard, decode_from_std_read, encode_into_std_write};
 
 use crate::{matcher::domain::order_book::OrderBook, matcher::storage::Storage};
 
@@ -30,7 +31,7 @@ impl LocalFileStorage {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis();
-        format!("{}_{}", self.snap_prefix, ts)
+        format!("{}_{}.bin", self.snap_prefix, ts)
     }
 
     fn is_snapshot_file(&self, path: &Path) -> bool {
@@ -43,8 +44,8 @@ impl LocalFileStorage {
             fs::read_dir(&self.root).unwrap_or_else(|_| panic!("dir: {:?}", self.root));
 
         let mut files = Vec::new();
-        while let Some(Ok(ent)) = entries.next() {
-            let p = ent.path();
+        while let Some(ent) = entries.next() {
+            let p = ent?.path();
             if self.is_snapshot_file(&p) {
                 files.push(p);
             }
@@ -85,13 +86,24 @@ impl Storage for LocalFileStorage {
         Ok(())
     }
 
-    fn load_latest_snapshot(&self) -> anyhow::Result<OrderBook> {
-        todo!()
+    fn load_latest_snapshot(&self) -> anyhow::Result<Option<OrderBook>> {
+        let files = self.list_snapshots_desc()?;
+        if let Some(newest) = files.first() {
+            let f = std::fs::File::open(newest)?;
+            let mut r = std::io::BufReader::new(f);
+            let book = decode_from_std_read(&mut r, standard())
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            return Ok(Some(book));
+        } else {
+            return Ok(None);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use rand::Rng;
 
     use crate::matcher::{
@@ -135,11 +147,33 @@ mod tests {
         let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
 
         let scales = Scales::new(100, 1000);
-        // for id in 1..=5000 {
-        let order = random_order(1, &scales);
-        //     tx.send(OrderEvent::New(order)).await.unwrap();
-        // }
-        let order_book = OrderBook::new();
+
+        let mut order_book = OrderBook::new();
+
+        for id in 1..=5000000 {
+            let order = random_order(id, &scales);
+            order_book.add_order(order);
+            //     tx.send(OrderEvent::New(order)).await.unwrap();
+        }
+
+        let start = Instant::now();
         storage.save_snapshot(&order_book).unwrap();
+        println!(
+            "save snapshot cost {}",
+            Instant::now().duration_since(start).as_secs()
+        )
+    }
+
+    #[test]
+    fn test_load_snapshot() {
+        let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+        let start = Instant::now();
+        if let Some(order) = storage.load_latest_snapshot().unwrap() {
+            println!(
+                "load snapshot cost {}",
+                Instant::now().duration_since(start).as_secs()
+            );
+            // println!("order book {:?}", &order);
+        }
     }
 }
