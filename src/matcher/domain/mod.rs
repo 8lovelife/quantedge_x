@@ -4,3 +4,4 @@ pub mod order_book;
 pub mod price_ticks;
 pub mod qty_lots;
 pub mod scales;
+pub mod time_in_force;

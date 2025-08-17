@@ -2,7 +2,7 @@ use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::matcher::{
-    domain::{order::Order, qty_lots::QtyLots},
+    domain::{fill::Fill, order::Order, qty_lots::QtyLots},
     policy::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
 };
 
@@ -24,7 +24,7 @@ impl PriceLevelPolicy for MakerPriceLevel {
         self.inner.total()
     }
 
-    fn allocate(&mut self, want: QtyLots) -> Vec<crate::matcher::domain::fill::Fill> {
+    fn allocate(&mut self, want: QtyLots) -> (Vec<Fill>, QtyLots) {
         self.inner.allocate(want)
     }
 }

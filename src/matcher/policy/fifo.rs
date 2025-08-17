@@ -36,8 +36,9 @@ impl PriceLevelPolicy for FifoPriceLevel {
         Ok(self.total)
     }
 
-    fn allocate(&mut self, mut want: QtyLots) -> Vec<Fill> {
+    fn allocate(&mut self, mut want: QtyLots) -> (Vec<Fill>, QtyLots) {
         let mut out = Vec::new();
+        let mut filled = QtyLots(0);
         while want.0 > 0 {
             if let Some(front) = self.orders.front_mut() {
                 let take = QtyLots(front.qty.0.min(want.0));
@@ -47,6 +48,7 @@ impl PriceLevelPolicy for FifoPriceLevel {
                 front.qty -= take;
                 self.total -= take;
                 want -= take;
+                filled += take;
                 out.push(Fill {
                     order_id: front.id,
                     qty: take,
@@ -58,6 +60,6 @@ impl PriceLevelPolicy for FifoPriceLevel {
                 break;
             }
         }
-        out
+        (out, filled)
     }
 }
