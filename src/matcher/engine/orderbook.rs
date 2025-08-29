@@ -36,6 +36,9 @@ where
     }
 
     pub fn add_order(&mut self, o: Order) -> anyhow::Result<()> {
+        let id = o.id;
+        let side = o.side;
+        let px = o.px;
         let sid_map = match o.side {
             OrderSide::Buy => &mut self.bids,
             OrderSide::Sell => &mut self.asks,
@@ -43,6 +46,7 @@ where
 
         let factory = self.new_level.clone();
         let lvl = sid_map.entry(o.px).or_insert_with(|| factory());
+        self.id_index.insert(id, (side, px));
         lvl.add(o)
     }
 

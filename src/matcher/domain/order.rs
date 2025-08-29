@@ -39,7 +39,7 @@ pub enum OrderEvent {
     Cancel(u64),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Decode, Encode)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Decode, Encode)]
 pub enum OrderSide {
     Buy,
     Sell,
