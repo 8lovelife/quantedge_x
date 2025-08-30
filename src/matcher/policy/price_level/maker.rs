@@ -3,12 +3,24 @@ use serde::{Deserialize, Serialize};
 
 use crate::matcher::{
     domain::{fill::Fill, order::Order, qty_lots::QtyLots},
-    policy::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
+    policy::price_level::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
 };
 
 #[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 pub struct MakerPriceLevel {
     pub inner: FifoPriceLevel,
+}
+
+impl MakerPriceLevel {
+    pub fn new() -> Self {
+        Self {
+            inner: FifoPriceLevel::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.total.0 == 0
+    }
 }
 
 impl PriceLevelPolicy for MakerPriceLevel {

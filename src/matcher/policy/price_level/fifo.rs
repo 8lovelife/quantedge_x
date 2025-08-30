@@ -6,13 +6,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::matcher::{
     domain::{fill::Fill, order::Order, qty_lots::QtyLots},
-    policy::price_level::PriceLevelPolicy,
+    policy::price_level::price_level::PriceLevelPolicy,
 };
 
 #[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 pub struct FifoPriceLevel {
     pub total: QtyLots,
     pub orders: VecDeque<Order>,
+}
+
+impl FifoPriceLevel {
+    pub fn new() -> Self {
+        Self {
+            total: QtyLots(0),
+            orders: VecDeque::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.total.0 == 0
+    }
 }
 
 impl PriceLevelPolicy for FifoPriceLevel {
