@@ -4,5 +4,5 @@ use crate::matcher::{
 };
 
 pub trait OrderTypeExecutor<T: OrderBookOps> {
-    fn execute(&mut self, order: Order, book: &mut T) -> anyhow::Result<TifResult>;
+    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifResult>;
 }

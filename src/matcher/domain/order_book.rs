@@ -144,20 +144,19 @@ mod tests {
     async fn test_book() {
         let mut order_book = OrderBook::new();
         let (tx, mut rx) = mpsc::channel::<OrderEvent>(1000);
+
         tokio::spawn(async move {
-            tokio::spawn(async move {
-                while let Some(event) = rx.recv().await {
-                    match event {
-                        OrderEvent::New(order) => {
-                            order_book.add_order(order);
-                            order_book.match_orders();
-                        }
-                        OrderEvent::Cancel(id) => {
-                            order_book.cancel_order(id);
-                        }
+            while let Some(event) = rx.recv().await {
+                match event {
+                    OrderEvent::New(order) => {
+                        order_book.add_order(order);
+                        order_book.match_orders();
+                    }
+                    OrderEvent::Cancel(id) => {
+                        order_book.cancel_order(id);
                     }
                 }
-            });
+            }
         });
 
         let scales = Scales::new(100, 1000);

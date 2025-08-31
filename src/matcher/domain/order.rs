@@ -8,6 +8,7 @@ use super::{price_ticks::PriceTicks, qty_lots::QtyLots, scales::Scales};
 #[derive(Debug, Clone, Serialize, Deserialize, Decode, Encode)]
 pub struct Order {
     pub id: u64,
+    pub order_type: OrderType,
     pub tif: TimeInForce,
     pub side: OrderSide,
     pub px: PriceTicks,
@@ -17,6 +18,7 @@ pub struct Order {
 impl Order {
     pub fn new(
         id: u64,
+        order_type: OrderType,
         tif: TimeInForce,
         side: OrderSide,
         px: f64,
@@ -25,6 +27,7 @@ impl Order {
     ) -> Result<Self, String> {
         Ok(Self {
             id,
+            order_type,
             tif,
             side,
             px: scales.to_ticks_strict(px)?,
@@ -43,4 +46,10 @@ pub enum OrderEvent {
 pub enum OrderSide {
     Buy,
     Sell,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Decode, Encode)]
+pub enum OrderType {
+    Market,
+    Limit,
 }

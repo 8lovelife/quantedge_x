@@ -10,7 +10,7 @@ use crate::matcher::{
 pub struct MarketExecutor;
 
 impl<T: OrderBookOps> OrderTypeExecutor<T> for MarketExecutor {
-    fn execute(&mut self, order: Order, book: &mut T) -> anyhow::Result<TifResult> {
+    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifResult> {
         match order.side {
             OrderSide::Buy => {
                 let (fills, filled) = book.sweep_market_buy(order.qty)?;
