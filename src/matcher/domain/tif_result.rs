@@ -5,6 +5,7 @@ use crate::matcher::domain::{
     rest_on_book::RestOnBook,
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TifStatus {
     Accepted,
     Rejected,

@@ -11,23 +11,30 @@ pub struct MarketExecutor;
 
 impl<T: OrderBookOps> OrderTypeExecutor<T> for MarketExecutor {
     fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifResult> {
-        match order.side {
-            OrderSide::Buy => {
-                let (fills, filled) = book.sweep_market_buy(order.qty)?;
-                Result::Ok(TifResult::accepted_with_cancel(
-                    fills,
-                    filled,
-                    order.qty - filled,
-                ))
-            }
-            OrderSide::Sell => {
-                let (fills, filled) = book.sweep_market_sell(order.qty)?;
-                Result::Ok(TifResult::accepted_with_cancel(
-                    fills,
-                    filled,
-                    order.qty - filled,
-                ))
-            }
-        }
+        // match order.side {
+        //     OrderSide::Buy => {
+        //         let (fills, filled) = book.sweep_market_buy(order.qty)?;
+        //         Result::Ok(TifResult::accepted_with_cancel(
+        //             fills,
+        //             filled,
+        //             order.qty - filled,
+        //         ))
+        //     }
+        //     OrderSide::Sell => {
+        //         let (fills, filled) = book.sweep_market_sell(order.qty)?;
+        //         Result::Ok(TifResult::accepted_with_cancel(
+        //             fills,
+        //             filled,
+        //             order.qty - filled,
+        //         ))
+        //     }
+        // }
+
+        let (fills, filled) = book.sweep_market_buy(order.qty)?;
+        Result::Ok(TifResult::accepted_with_cancel(
+            fills,
+            filled,
+            order.qty - filled,
+        ))
     }
 }

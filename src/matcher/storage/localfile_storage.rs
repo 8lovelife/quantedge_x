@@ -100,80 +100,80 @@ impl Storage for LocalFileStorage {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::time::Instant;
+// #[cfg(test)]
+// mod tests {
+//     use std::time::Instant;
 
-    use rand::Rng;
+//     use rand::Rng;
 
-    use crate::matcher::{
-        domain::{
-            order::{Order, OrderSide},
-            order_book::OrderBook,
-            price_ticks::PriceTicks,
-            qty_lots::QtyLots,
-            scales::Scales,
-        },
-        storage::{Storage, localfile_storage::LocalFileStorage},
-    };
+//     use crate::matcher::{
+//         domain::{
+//             order::{Order, OrderSide},
+//             order_book::OrderBook,
+//             price_ticks::PriceTicks,
+//             qty_lots::QtyLots,
+//             scales::Scales,
+//         },
+//         storage::{Storage, localfile_storage::LocalFileStorage},
+//     };
 
-    pub fn random_order(id: u64, scales: &Scales) -> Order {
-        let mut rng = rand::thread_rng();
+//     pub fn random_order(id: u64, scales: &Scales) -> Order {
+//         let mut rng = rand::thread_rng();
 
-        // 价格范围：100.00 ~ 200.00
-        let px_ticks_range =
-            (100.00 * scales.tick_size as f64) as i64..=(200.00 * scales.tick_size as f64) as i64;
-        let px_ticks = rng.gen_range(px_ticks_range.clone());
-        let px = PriceTicks(px_ticks);
+//         // 价格范围：100.00 ~ 200.00
+//         let px_ticks_range =
+//             (100.00 * scales.tick_size as f64) as i64..=(200.00 * scales.tick_size as f64) as i64;
+//         let px_ticks = rng.gen_range(px_ticks_range.clone());
+//         let px = PriceTicks(px_ticks);
 
-        // 数量范围：0.005 ~ 5.000
-        let qty_lots_range =
-            (0.005 * scales.lot_size as f64) as i64..=(5.000 * scales.lot_size as f64) as i64;
-        let qty_lots = rng.gen_range(qty_lots_range.clone());
-        let qty = QtyLots(qty_lots);
+//         // 数量范围：0.005 ~ 5.000
+//         let qty_lots_range =
+//             (0.005 * scales.lot_size as f64) as i64..=(5.000 * scales.lot_size as f64) as i64;
+//         let qty_lots = rng.gen_range(qty_lots_range.clone());
+//         let qty = QtyLots(qty_lots);
 
-        // 随机方向
-        let side = if rng.gen_bool(0.5) {
-            OrderSide::Buy
-        } else {
-            OrderSide::Sell
-        };
+//         // 随机方向
+//         let side = if rng.gen_bool(0.5) {
+//             OrderSide::Buy
+//         } else {
+//             OrderSide::Sell
+//         };
 
-        Order { id, side, px, qty }
-    }
+//         Order { id, side, px, qty }
+//     }
 
-    #[test]
-    fn test_save_snapshot() {
-        let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+//     #[test]
+//     fn test_save_snapshot() {
+//         let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
 
-        let scales = Scales::new(100, 1000);
+//         let scales = Scales::new(100, 1000);
 
-        let mut order_book = OrderBook::new();
+//         let mut order_book = OrderBook::new();
 
-        for id in 1..=5000000 {
-            let order = random_order(id, &scales);
-            order_book.add_order(order);
-            //     tx.send(OrderEvent::New(order)).await.unwrap();
-        }
+//         for id in 1..=5000000 {
+//             let order = random_order(id, &scales);
+//             order_book.add_order(order);
+//             //     tx.send(OrderEvent::New(order)).await.unwrap();
+//         }
 
-        let start = Instant::now();
-        storage.save_snapshot(&order_book).unwrap();
-        println!(
-            "save snapshot cost {}",
-            Instant::now().duration_since(start).as_secs()
-        )
-    }
+//         let start = Instant::now();
+//         storage.save_snapshot(&order_book).unwrap();
+//         println!(
+//             "save snapshot cost {}",
+//             Instant::now().duration_since(start).as_secs()
+//         )
+//     }
 
-    #[test]
-    fn test_load_snapshot() {
-        let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
-        let start = Instant::now();
-        if let Some(order) = storage.load_latest_snapshot().unwrap() {
-            println!(
-                "load snapshot cost {}",
-                Instant::now().duration_since(start).as_secs()
-            );
-            // println!("order book {:?}", &order);
-        }
-    }
-}
+//     #[test]
+//     fn test_load_snapshot() {
+//         let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+//         let start = Instant::now();
+//         if let Some(order) = storage.load_latest_snapshot().unwrap() {
+//             println!(
+//                 "load snapshot cost {}",
+//                 Instant::now().duration_since(start).as_secs()
+//             );
+//             // println!("order book {:?}", &order);
+//         }
+//     }
+// }

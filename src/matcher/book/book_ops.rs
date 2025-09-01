@@ -15,5 +15,5 @@ pub trait OrderBookOps {
     ) -> anyhow::Result<(Vec<Fill>, QtyLots)>;
 
     fn sweep_market_buy(&mut self, want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)>;
-    fn sweep_market_sell(&mut self, want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)>;
+    // fn sweep_market_sell(&mut self, want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)>;
 }

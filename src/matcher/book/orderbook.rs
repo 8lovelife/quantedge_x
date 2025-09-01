@@ -123,7 +123,7 @@ where
 
     fn liquidity_down_to_bid(&self, limit: PriceTicks, want: QtyLots) -> anyhow::Result<QtyLots> {
         let mut acc = QtyLots(0);
-        for (_px, lvl) in self.bids.range(limit..) {
+        for (_px, lvl) in self.bids.range(limit..).rev() {
             let qtys = lvl.total()?;
             acc += qtys;
             if acc >= want {
@@ -184,26 +184,26 @@ where
         debug_assert_eq!(filled, init_want - want);
         Result::Ok((fills, init_want - want))
     }
-    fn sweep_market_sell(&mut self, mut want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
-        let init_want = want;
-        let mut clear_pxs = Vec::new();
-        let mut fills = Vec::new();
-        for (&px, lvl) in self.bids.iter_mut() {
-            let (mut part, got) = lvl.allocate(want);
-            fills.append(&mut part);
-            want -= got;
-            if lvl.total()?.0 == 0 {
-                clear_pxs.push(px);
-            }
-            if want.0 <= 0 {
-                break;
-            }
-        }
-        for px in clear_pxs {
-            self.bids.remove(&px);
-        }
-        let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
-        debug_assert_eq!(filled, init_want - want);
-        Result::Ok((fills, init_want - want))
-    }
+    // fn sweep_market_sell(&mut self, mut want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
+    //     let init_want = want;
+    //     let mut clear_pxs = Vec::new();
+    //     let mut fills = Vec::new();
+    //     for (&px, lvl) in self.bids.iter_mut() {
+    //         let (mut part, got) = lvl.allocate(want);
+    //         fills.append(&mut part);
+    //         want -= got;
+    //         if lvl.total()?.0 == 0 {
+    //             clear_pxs.push(px);
+    //         }
+    //         if want.0 <= 0 {
+    //             break;
+    //         }
+    //     }
+    //     for px in clear_pxs {
+    //         self.bids.remove(&px);
+    //     }
+    //     let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
+    //     debug_assert_eq!(filled, init_want - want);
+    //     Result::Ok((fills, init_want - want))
+    // }
 }

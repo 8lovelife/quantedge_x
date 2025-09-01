@@ -20,9 +20,15 @@ impl<P: TifPolicy> LimitExecutor<P> {
 
 impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
     fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifResult> {
-        match order.side {
-            OrderSide::Buy => self.policy.execute_buy(book, Some(order.px), order.qty),
-            OrderSide::Sell => self.policy.execute_sell(book, Some(order.px), order.qty),
-        }
+        let resp = match order.side {
+            OrderSide::Buy => self.policy.execute_buy(book, Some(order.px), order.qty)?,
+            OrderSide::Sell => self.policy.execute_sell(book, Some(order.px), order.qty)?,
+        };
+
+        // if let Some(rest) = resp.rest.as_ref() {
+        //     book.insert_resting(rest.clone())?;
+        // }
+
+        Result::Ok(resp)
     }
 }
