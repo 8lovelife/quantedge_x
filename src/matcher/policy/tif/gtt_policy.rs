@@ -18,11 +18,16 @@ impl TifPolicy for GttPolicy {
         want: QtyLots,
     ) -> anyhow::Result<TifResult> {
         let limit = limit.expect("GTT buy must have a limit price");
-        let (fills, filled) = book.sweep_asks_up_to(limit, want)?;
-        let mut result = TifResult::accepted(fills, filled);
-        let rest_qty = want - filled;
+        let sweep_result = book.sweep_asks_up_to(limit, want)?;
+        let mut result = TifResult::accepted(sweep_result.fills, sweep_result.filled);
+        let rest_qty = sweep_result.leftover;
         if rest_qty.0 > 0 {
-            result.with_rest(OrderSide::Buy, limit, rest_qty, Some(self.expires_at));
+            result.with_rest(
+                OrderSide::Buy,
+                limit,
+                sweep_result.leftover,
+                Some(self.expires_at),
+            );
         }
         Result::Ok(result)
     }
@@ -34,9 +39,9 @@ impl TifPolicy for GttPolicy {
         want: QtyLots,
     ) -> anyhow::Result<TifResult> {
         let limit = limit.expect("GTT sell must have a limit price");
-        let (fills, filled) = book.sweep_bids_down_to(limit, want)?;
-        let mut result = TifResult::accepted(fills, filled);
-        let rest_qty = want - filled;
+        let sweep_result = book.sweep_bids_down_to(limit, want)?;
+        let mut result = TifResult::accepted(sweep_result.fills, sweep_result.filled);
+        let rest_qty = sweep_result.leftover;
         if rest_qty.0 > 0 {
             result.with_rest(OrderSide::Sell, limit, rest_qty, Some(self.expires_at));
         }

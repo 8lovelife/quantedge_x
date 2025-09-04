@@ -30,11 +30,11 @@ impl<T: OrderBookOps> OrderTypeExecutor<T> for MarketExecutor {
         //     }
         // }
 
-        let (fills, filled) = book.sweep_market_buy(order.qty)?;
+        let sweep_result = book.sweep_market_buy(order.qty)?;
         Result::Ok(TifResult::accepted_with_cancel(
-            fills,
-            filled,
-            order.qty - filled,
+            sweep_result.fills,
+            sweep_result.filled,
+            sweep_result.leftover,
         ))
     }
 }

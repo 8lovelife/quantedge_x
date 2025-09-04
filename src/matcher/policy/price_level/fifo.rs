@@ -5,7 +5,7 @@ use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::matcher::{
-    domain::{fill::Fill, order::Order, qty_lots::QtyLots},
+    domain::{allocation_result::AllocationResult, fill::Fill, order::Order, qty_lots::QtyLots},
     policy::price_level::price_level::PriceLevelPolicy,
 };
 
@@ -49,8 +49,9 @@ impl PriceLevelPolicy for FifoPriceLevel {
         Ok(self.total)
     }
 
-    fn allocate(&mut self, mut want: QtyLots) -> (Vec<Fill>, QtyLots) {
+    fn allocate(&mut self, mut want: QtyLots) -> anyhow::Result<AllocationResult> {
         let mut out = Vec::new();
+        let mut done_ids = Vec::new();
         let mut filled = QtyLots(0);
         while want.0 > 0 {
             if let Some(front) = self.orders.front_mut() {
@@ -67,12 +68,13 @@ impl PriceLevelPolicy for FifoPriceLevel {
                     qty: take,
                 });
                 if front.qty.0 == 0 {
+                    done_ids.push(front.id);
                     self.orders.pop_front();
                 }
             } else {
                 break;
             }
         }
-        (out, filled)
+        Result::Ok(AllocationResult::new(out, filled, done_ids))
     }
 }

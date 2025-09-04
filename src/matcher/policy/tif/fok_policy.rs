@@ -17,8 +17,8 @@ impl TifPolicy for FokPolicy {
         if book.liquidity_up_to_ask(limit, want)? < want {
             return Result::Ok(TifResult::rejected_with_cancel(want));
         }
-        let (fills, filled) = book.sweep_asks_up_to(limit, want)?;
-        Result::Ok(TifResult::accepted(fills, filled))
+        let sweep_result = book.sweep_asks_up_to(limit, want)?;
+        Result::Ok(TifResult::accepted(sweep_result.fills, sweep_result.filled))
     }
 
     fn execute_sell<T: OrderBookOps>(
@@ -31,7 +31,7 @@ impl TifPolicy for FokPolicy {
         if book.liquidity_down_to_bid(limit, want)? < want {
             return Result::Ok(TifResult::rejected_with_cancel(want));
         }
-        let (fills, filled) = book.sweep_bids_down_to(limit, want)?;
-        Result::Ok(TifResult::accepted(fills, filled))
+        let sweep_result = book.sweep_bids_down_to(limit, want)?;
+        Result::Ok(TifResult::accepted(sweep_result.fills, sweep_result.filled))
     }
 }

@@ -14,8 +14,12 @@ impl TifPolicy for IocPolicy {
         want: QtyLots,
     ) -> anyhow::Result<TifResult> {
         let limit = limit.expect("IOC buy must have a limit price");
-        let (fills, filled) = book.sweep_asks_up_to(limit, want)?;
-        let result = TifResult::accepted_with_cancel(fills, filled, want - filled);
+        let sweep_result = book.sweep_asks_up_to(limit, want)?;
+        let result = TifResult::accepted_with_cancel(
+            sweep_result.fills,
+            sweep_result.filled,
+            sweep_result.leftover,
+        );
         Result::Ok(result)
     }
 
@@ -26,8 +30,12 @@ impl TifPolicy for IocPolicy {
         want: QtyLots,
     ) -> anyhow::Result<TifResult> {
         let limit = limit.expect("IOC sell must have a limit price");
-        let (fills, filled) = book.sweep_bids_down_to(limit, want)?;
-        let result = TifResult::accepted_with_cancel(fills, filled, want - filled);
+        let sweep_result = book.sweep_bids_down_to(limit, want)?;
+        let result = TifResult::accepted_with_cancel(
+            sweep_result.fills,
+            sweep_result.filled,
+            sweep_result.leftover,
+        );
         Result::Ok(result)
     }
 }

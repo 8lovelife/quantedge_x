@@ -12,6 +12,7 @@ use crate::matcher::{
         order::{Order, OrderSide},
         price_ticks::PriceTicks,
         qty_lots::QtyLots,
+        sweep_result::SweepResult,
     },
     policy::price_level::price_level::PriceLevelPolicy,
 };
@@ -96,13 +97,15 @@ where
         &mut self,
         limit: PriceTicks,
         mut want: QtyLots,
-    ) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
+    ) -> anyhow::Result<SweepResult> {
         let init_want = want;
         let mut clear_pxs = Vec::new();
         let mut fills = Vec::new();
         for (&px, lvl) in self.asks.range_mut(PriceTicks(i64::MIN)..limit) {
-            let (mut part, got) = lvl.allocate(want);
-            fills.append(&mut part);
+            let mut allocation_result = lvl.allocate(want)?;
+            let part = allocation_result.fills.as_mut();
+            let got = allocation_result.filled;
+            fills.append(part);
             want -= got;
             if lvl.total()?.0 == 0 {
                 clear_pxs.push(px);
@@ -118,7 +121,7 @@ where
         let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
         debug_assert_eq!(filled, init_want - want);
 
-        Result::Ok((fills, init_want - want))
+        Result::Ok(SweepResult::build(fills, filled, init_want))
     }
 
     fn liquidity_down_to_bid(&self, limit: PriceTicks, want: QtyLots) -> anyhow::Result<QtyLots> {
@@ -137,13 +140,15 @@ where
         &mut self,
         limit: PriceTicks,
         mut want: QtyLots,
-    ) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
+    ) -> anyhow::Result<SweepResult> {
         let init_want = want;
         let mut clear_pxs = Vec::new();
         let mut fills = Vec::new();
         for (&px, lvl) in self.bids.range_mut(limit..).rev() {
-            let (mut part, got) = lvl.allocate(want);
-            fills.append(&mut part);
+            let mut allocation_result = lvl.allocate(want)?;
+            let part = allocation_result.fills.as_mut();
+            let got = allocation_result.filled;
+            fills.append(part);
             want -= got;
             if lvl.total()?.0 == 0 {
                 clear_pxs.push(px);
@@ -157,16 +162,19 @@ where
         }
         let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
         debug_assert_eq!(filled, init_want - want);
-        Result::Ok((fills, init_want - want))
+
+        Result::Ok(SweepResult::build(fills, filled, init_want))
     }
 
-    fn sweep_market_buy(&mut self, mut want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
+    fn sweep_market_buy(&mut self, mut want: QtyLots) -> anyhow::Result<SweepResult> {
         let init_want = want;
         let mut clear_pxs = Vec::new();
         let mut fills = Vec::new();
         for (&px, lvl) in self.asks.iter_mut() {
-            let (mut part, got) = lvl.allocate(want);
-            fills.append(&mut part);
+            let mut allocation_result = lvl.allocate(want)?;
+            let part = allocation_result.fills.as_mut();
+            let got = allocation_result.filled;
+            fills.append(part);
             want -= got;
             if lvl.total()?.0 == 0 {
                 clear_pxs.push(px);
@@ -182,7 +190,7 @@ where
 
         let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
         debug_assert_eq!(filled, init_want - want);
-        Result::Ok((fills, init_want - want))
+        Result::Ok(SweepResult::build(fills, filled, init_want))
     }
     // fn sweep_market_sell(&mut self, mut want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
     //     let init_want = want;

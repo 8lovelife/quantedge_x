@@ -1,5 +1,5 @@
 use crate::matcher::{
-    domain::{fill::Fill, order::Order, qty_lots::QtyLots},
+    domain::{allocation_result::AllocationResult, fill::Fill, order::Order, qty_lots::QtyLots},
     policy::price_level::price_level::PriceLevelPolicy,
 };
 
@@ -31,7 +31,7 @@ where
         self.a.total()
     }
 
-    fn allocate(&mut self, want: QtyLots) -> (Vec<Fill>, QtyLots) {
+    fn allocate(&mut self, want: QtyLots) -> anyhow::Result<AllocationResult> {
         self.a.allocate(want)
     }
 }
@@ -64,7 +64,7 @@ impl PriceLevelPolicy for PriceLevelChain {
         todo!()
     }
 
-    fn allocate(&mut self, want: QtyLots) -> (Vec<Fill>, QtyLots) {
+    fn allocate(&mut self, want: QtyLots) -> anyhow::Result<AllocationResult> {
         todo!()
     }
 }

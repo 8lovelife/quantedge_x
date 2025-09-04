@@ -6,5 +6,6 @@ pub mod price_ticks;
 pub mod qty_lots;
 pub mod rest_on_book;
 pub mod scales;
+pub mod sweep_result;
 pub mod tif_result;
 pub mod time_in_force;
