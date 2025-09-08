@@ -18,6 +18,10 @@ impl QtyLots {
         }
         Ok(Self(raw))
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
 }
 impl Display for QtyLots {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,6 +1,6 @@
 use crate::matcher::{
     book::book_ops::OrderBookOps,
-    domain::{price_ticks::PriceTicks, qty_lots::QtyLots, tif_result::TifResult},
+    domain::{price_ticks::PriceTicks, qty_lots::QtyLots, tif_policy_result::TifPolicyResult},
 };
 
 pub trait TifPolicy {
@@ -9,12 +9,12 @@ pub trait TifPolicy {
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult>;
+    ) -> anyhow::Result<TifPolicyResult>;
 
     fn execute_sell<T: OrderBookOps>(
         &self,
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult>;
+    ) -> anyhow::Result<TifPolicyResult>;
 }

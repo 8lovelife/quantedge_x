@@ -2,6 +2,7 @@ use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
         order::{Order, OrderType},
+        tif_policy_result::TifPolicyResult,
         tif_result::TifResult,
     },
     executor::{
@@ -18,7 +19,7 @@ impl Engine {
         &mut self,
         order: Order,
         book: &mut T,
-    ) -> anyhow::Result<TifResult> {
+    ) -> anyhow::Result<TifPolicyResult> {
         match order.order_type {
             OrderType::Market => {
                 let market_executor = MarketExecutor;

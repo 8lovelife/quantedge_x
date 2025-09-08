@@ -2,7 +2,7 @@ use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
         order::{Order, OrderSide},
-        tif_result::TifResult,
+        tif_policy_result::TifPolicyResult,
     },
     executor::order_executor::OrderTypeExecutor,
     policy::tif::tif_policy::TifPolicy,
@@ -19,7 +19,7 @@ impl<P: TifPolicy> LimitExecutor<P> {
 }
 
 impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
-    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifResult> {
+    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifPolicyResult> {
         let resp = match order.side {
             OrderSide::Buy => self.policy.execute_buy(book, Some(order.px), order.qty)?,
             OrderSide::Sell => self.policy.execute_sell(book, Some(order.px), order.qty)?,

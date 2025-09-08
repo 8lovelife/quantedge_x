@@ -3,7 +3,7 @@ use chrono::Utc;
 use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
-        price_ticks::PriceTicks, qty_lots::QtyLots, tif_result::TifResult,
+        price_ticks::PriceTicks, qty_lots::QtyLots, tif_policy_result::TifPolicyResult,
         time_in_force::TimeInForce,
     },
     policy::tif::{
@@ -25,7 +25,7 @@ impl TifPolicy for AnyTifPolicy {
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult> {
+    ) -> anyhow::Result<TifPolicyResult> {
         match self {
             AnyTifPolicy::IOC(p) => p.execute_buy(book, limit, want),
             AnyTifPolicy::FOK(p) => p.execute_buy(book, limit, want),
@@ -39,7 +39,7 @@ impl TifPolicy for AnyTifPolicy {
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult> {
+    ) -> anyhow::Result<TifPolicyResult> {
         match self {
             AnyTifPolicy::IOC(p) => p.execute_sell(book, limit, want),
             AnyTifPolicy::FOK(p) => p.execute_sell(book, limit, want),

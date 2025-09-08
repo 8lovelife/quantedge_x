@@ -1,6 +1,9 @@
 use crate::matcher::{
     book::book_ops::OrderBookOps,
-    domain::{order::OrderSide, price_ticks::PriceTicks, qty_lots::QtyLots, tif_result::TifResult},
+    domain::{
+        order::OrderSide, price_ticks::PriceTicks, qty_lots::QtyLots, rest_on_book::RestOnBook,
+        sweep_result::SweepResult, tif_policy_result::TifPolicyResult, tif_result::TifResult,
+    },
     policy::tif::tif_policy::TifPolicy,
 };
 
@@ -12,15 +15,46 @@ impl TifPolicy for GtcPolicy {
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult> {
+    ) -> anyhow::Result<TifPolicyResult> {
         let limit = limit.expect("GTC buy must have a limit price");
-        let sweep_result = book.sweep_asks_up_to(limit, want)?;
-        let mut result = TifResult::accepted(sweep_result.fills, sweep_result.filled);
-        let rest_qty = sweep_result.leftover;
-        if rest_qty.0 > 0 {
-            result.with_rest(OrderSide::Buy, limit, rest_qty, None);
+        match book.sweep_asks_up_to(limit, want)? {
+            SweepResult::None { want } => Ok(TifPolicyResult::accepted_and_placed(
+                vec![],
+                QtyLots(0),
+                RestOnBook {
+                    side: OrderSide::Buy,
+                    limit,
+                    qty: want,
+                    expires_at: None,
+                },
+                None,
+            )),
+            SweepResult::Full {
+                fills,
+                filled,
+                completed_order_ids,
+            } => Ok(TifPolicyResult::accepted(
+                fills,
+                filled,
+                Some(completed_order_ids),
+            )),
+            SweepResult::Partial {
+                fills,
+                filled,
+                leftover,
+                completed_order_ids,
+            } => Ok(TifPolicyResult::accepted_and_placed(
+                fills,
+                filled,
+                RestOnBook {
+                    side: OrderSide::Buy,
+                    limit,
+                    qty: leftover,
+                    expires_at: None,
+                },
+                Some(completed_order_ids),
+            )),
         }
-        Result::Ok(result)
     }
 
     fn execute_sell<T: OrderBookOps>(
@@ -28,14 +62,45 @@ impl TifPolicy for GtcPolicy {
         book: &mut T,
         limit: Option<PriceTicks>,
         want: QtyLots,
-    ) -> anyhow::Result<TifResult> {
+    ) -> anyhow::Result<TifPolicyResult> {
         let limit = limit.expect("GTC sell must have a limit price");
-        let sweep_result = book.sweep_bids_down_to(limit, want)?;
-        let mut result = TifResult::accepted(sweep_result.fills, sweep_result.filled);
-        let rest_qty = sweep_result.leftover;
-        if rest_qty.0 > 0 {
-            result.with_rest(OrderSide::Sell, limit, rest_qty, None);
+        match book.sweep_bids_down_to(limit, want)? {
+            SweepResult::None { want } => Ok(TifPolicyResult::accepted_and_placed(
+                vec![],
+                QtyLots(0),
+                RestOnBook {
+                    side: OrderSide::Sell,
+                    limit,
+                    qty: want,
+                    expires_at: None,
+                },
+                None,
+            )),
+            SweepResult::Full {
+                fills,
+                filled,
+                completed_order_ids,
+            } => Ok(TifPolicyResult::accepted(
+                fills,
+                filled,
+                Some(completed_order_ids),
+            )),
+            SweepResult::Partial {
+                fills,
+                filled,
+                leftover,
+                completed_order_ids,
+            } => Ok(TifPolicyResult::accepted_and_placed(
+                fills,
+                filled,
+                RestOnBook {
+                    side: OrderSide::Sell,
+                    limit,
+                    qty: leftover,
+                    expires_at: None,
+                },
+                Some(completed_order_ids),
+            )),
         }
-        Result::Ok(result)
     }
 }
