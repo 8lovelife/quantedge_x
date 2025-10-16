@@ -1,4 +1,6 @@
-use crate::matcher::domain::{fill::Fill, qty_lots::QtyLots, rest_on_book::RestOnBook};
+use crate::matcher::domain::{
+    fill::Fill, qty_lots::QtyLots, reject_reason::RejectReason, rest_on_book::RestOnBook,
+};
 
 pub enum TifPolicyResult {
     Accepted {
@@ -20,6 +22,7 @@ pub enum TifPolicyResult {
     },
     Rejected {
         canceled: QtyLots,
+        reject_reason: RejectReason,
     },
 }
 
@@ -64,7 +67,10 @@ impl TifPolicyResult {
         }
     }
 
-    pub fn rejected(canceled: QtyLots) -> Self {
-        TifPolicyResult::Rejected { canceled }
+    pub fn rejected(canceled: QtyLots, reject_reason: RejectReason) -> Self {
+        TifPolicyResult::Rejected {
+            canceled,
+            reject_reason,
+        }
     }
 }

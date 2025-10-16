@@ -2,9 +2,10 @@ use crate::matcher::domain::{
     price_ticks::PriceTicks, qty_lots::QtyLots, reject_reason::RejectReason,
 };
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum ExecutionEvent {
     Placed {
-        order_id: u64,
+        order_id: Option<u64>,
         qty: QtyLots,
         price: PriceTicks,
         expires_at: Option<u64>,

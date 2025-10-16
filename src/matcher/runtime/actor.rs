@@ -99,15 +99,19 @@ where
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use rand::Rng;
     use tokio::sync::mpsc;
 
     use crate::matcher::{
         book::orderbook::OrderBook,
         domain::{
+            execution_event::ExecutionEvent,
             order::{Order, OrderEvent, OrderSide, OrderType},
             price_ticks::PriceTicks,
             qty_lots::QtyLots,
+            reject_reason::RejectReason,
             scales::Scales,
             tif_result::TifStatus,
             time_in_force::TimeInForce,
@@ -147,33 +151,28 @@ mod tests {
         }
     }
 
-    // #[tokio::test]
-    // async fn test_book() {
-    //     let mut order_book = OrderBook::new();
-    //     let (tx, mut rx) = mpsc::channel::<OrderEvent>(1000);
+    #[tokio::test]
+    async fn test_book() {
+        let factory = || FifoPriceLevel::new();
+        let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+        let client_clone = Arc::new(client);
+        let mut handles = Vec::new();
+        let scales = Scales::new(100, 1000);
+        for id in 1..=1400000 {
+            let order = random_order(id, &scales);
+            let client = client_clone.clone();
+            let handle = tokio::spawn(async move {
+                let result = client.place_order(order).await;
+                result
+            });
+            handles.push(handle);
+        }
 
-    //     tokio::spawn(async move {
-    //         while let Some(event) = rx.recv().await {
-    //             match event {
-    //                 OrderEvent::New(order) => {
-    //                     order_book.add_order(order);
-    //                     order_book.match_orders();
-    //                 }
-    //                 OrderEvent::Cancel(id) => {
-    //                     order_book.cancel_order(id);
-    //                 }
-    //             }
-    //         }
-    //     });
-
-    //     let scales = Scales::new(100, 1000);
-    //     for id in 1..=5000 {
-    //         let order = random_order(id, &scales);
-    //         tx.send(OrderEvent::New(order)).await.unwrap();
-    //     }
-
-    //     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    // }
+        for handle in handles {
+            let result = handle.await.unwrap();
+            // println!("{:?}", result);
+        }
+    }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn actor_smoke_exec() {
@@ -182,13 +181,21 @@ mod tests {
         let order = Order {
             id: 1,
             side: OrderSide::Buy,
-            order_type: OrderType::Limit,
-            tif: TimeInForce::GTC,
+            order_type: OrderType::Market,
+            tif: TimeInForce::IOC,
             px: PriceTicks(0),
             qty: QtyLots(100),
         };
 
-        let result = client.place_order(order).await.unwrap();
-        assert_eq!(QtyLots(0), result.filled)
+        let mut result = client.place_order(order).await.unwrap();
+        assert_eq!(1, result.events.len());
+        let event = result.events.pop().unwrap();
+        assert_eq!(
+            ExecutionEvent::Rejected {
+                order_id: 1,
+                reason: RejectReason::NoMatchingOrder
+            },
+            event
+        );
     }
 }

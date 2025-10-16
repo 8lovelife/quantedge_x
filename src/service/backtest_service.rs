@@ -1,13 +1,12 @@
 use std::{error::Error, sync::Arc};
 
-use chrono::{NaiveDate, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    api::handlers::{Algorithm, StrategyBacktestRunRequest, backtest::LabBacktestRunRequest},
+    api::handlers::{StrategyBacktestRunRequest, backtest::LabBacktestRunRequest},
     data::{
-        coin_market::CoinsMarket,
         duckdb::{
             OhlcvRepository,
             repository::{
@@ -19,23 +18,18 @@ use crate::{
             schema::{LabRunHistory, backtest_run_history::BacktestRunHistory},
             types::Timestamp,
         },
-        fetcher::common::{
-            get_asset_symbol_mapping, map_asset_allocation_symbols, map_asset_symbols,
-        },
         market_data_feed::MarketDataFeed,
-        sleddb::{ChartDB, chart_db},
+        sleddb::ChartDB,
     },
     engine::{
         backtest_result::{Balance, Trade},
-        backtester::{AssetAllocation, BacktestDriver, Backtester, PortfolioAsset},
-        lab_observer::LabObserver,
-        parameters::{BacktestInput, RunLabStrategy, StrategyRunParams},
+        backtester::BacktestDriver,
+        parameters::BacktestInput,
     },
     indicators::{
         DistributionData, calculate_daily_return_distribution, calculate_monthly_returns,
-        calculator::MonthlyReturnData, moving_average::MovingAverageType,
+        calculator::MonthlyReturnData,
     },
-    strategy::{market_data::MarketData, strategy_type::StrategyType},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

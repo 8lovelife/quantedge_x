@@ -1,6 +1,10 @@
+use anyhow::Ok;
+
 use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
+        execution_event::ExecutionEvent,
+        execution_result::ExecutionResult,
         order::{Order, OrderSide},
         tif_policy_result::TifPolicyResult,
     },
@@ -19,7 +23,7 @@ impl<P: TifPolicy> LimitExecutor<P> {
 }
 
 impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
-    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<TifPolicyResult> {
+    fn execute(&self, order: Order, book: &mut T) -> anyhow::Result<ExecutionResult> {
         let resp = match order.side {
             OrderSide::Buy => self.policy.execute_buy(book, Some(order.px), order.qty)?,
             OrderSide::Sell => self.policy.execute_sell(book, Some(order.px), order.qty)?,
@@ -29,6 +33,6 @@ impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
         //     book.insert_resting(rest.clone())?;
         // }
 
-        Result::Ok(resp)
+        Ok(ExecutionResult::from_tif_result(order, resp))
     }
 }

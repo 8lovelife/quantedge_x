@@ -66,6 +66,7 @@ impl PriceLevelPolicy for FifoPriceLevel {
                 out.push(Fill {
                     order_id: front.id,
                     qty: take,
+                    price: front.px,
                 });
                 if front.qty.0 == 0 {
                     done_ids.push(front.id);

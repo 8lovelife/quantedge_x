@@ -1,7 +1,7 @@
 use tokio::sync::{mpsc, oneshot};
 
 use crate::matcher::{
-    domain::{order::Order, tif_policy_result::TifPolicyResult},
+    domain::{execution_result::ExecutionResult, order::Order},
     runtime::cmd::Cmd,
 };
 
@@ -14,7 +14,7 @@ impl BookClient {
         Self { tx }
     }
 
-    pub async fn place_order(&self, order: Order) -> anyhow::Result<TifPolicyResult> {
+    pub async fn place_order(&self, order: Order) -> anyhow::Result<ExecutionResult> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Cmd::Place {

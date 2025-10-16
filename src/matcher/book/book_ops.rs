@@ -1,5 +1,5 @@
 use crate::matcher::domain::{
-    price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult,
+    order::Order, price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult,
 };
 
 pub trait OrderBookOps {
@@ -15,4 +15,8 @@ pub trait OrderBookOps {
 
     fn sweep_market_buy(&mut self, want: QtyLots) -> anyhow::Result<SweepResult>;
     // fn sweep_market_sell(&mut self, want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)>;
+
+    fn add_order(&mut self, o: Order) -> anyhow::Result<()>;
+
+    fn cancel(&mut self, id: u64) -> anyhow::Result<bool>;
 }

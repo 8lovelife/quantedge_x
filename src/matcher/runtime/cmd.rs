@@ -1,11 +1,11 @@
 use tokio::sync::oneshot;
 
-use crate::matcher::domain::{order::Order, tif_policy_result::TifPolicyResult};
+use crate::matcher::domain::{execution_result::ExecutionResult, order::Order};
 
 pub enum Cmd {
     Place {
         order: Order,
-        resp: Option<oneshot::Sender<anyhow::Result<TifPolicyResult>>>,
+        resp: Option<oneshot::Sender<anyhow::Result<ExecutionResult>>>,
     },
 
     Cancel {

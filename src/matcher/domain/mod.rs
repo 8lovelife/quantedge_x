@@ -1,5 +1,6 @@
 pub mod allocation_result;
 pub mod execution_event;
+pub mod execution_result;
 pub mod fill;
 pub mod order;
 pub mod order_book;
