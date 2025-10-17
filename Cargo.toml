@@ -24,7 +24,17 @@ futures-util = "0.3.31"
 bincode = "2.0.1"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
+log = "0.4"
+env_logger = "0.10"
 
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+
+
+[[bench]]
+name = "matching_bench"
+harness = false
 
 [[bin]]
 name = "quantedge_x"

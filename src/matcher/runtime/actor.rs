@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use chrono::Utc;
+use log::info;
 use tokio::sync::mpsc;
 
 use crate::matcher::{
@@ -67,7 +68,7 @@ where
 
     pub async fn handle_tick(&mut self) -> anyhow::Result<()> {
         let now = Utc::now();
-        println!("[tick] {}", now.to_rfc3339());
+        info!("[tick] {}", now.to_rfc3339());
         Result::Ok(())
     }
 
