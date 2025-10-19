@@ -80,7 +80,12 @@ where
                     let _ = tx.send(res);
                 }
             }
-            Cmd::Cancel { id, resp } => {}
+            Cmd::Cancel { id, resp } => {
+                let res = self.book.cancel(id);
+                if let Some(tx) = resp {
+                    let _ = tx.send(res);
+                }
+            }
         }
         Result::Ok(())
     }
@@ -103,10 +108,10 @@ mod tests {
     use std::sync::Arc;
 
     use rand::Rng;
-    use tokio::sync::mpsc;
+    use tokio::{sync::mpsc, task::Id};
 
     use crate::matcher::{
-        book::orderbook::OrderBook,
+        book::{book_ops::OrderBookOps, orderbook::OrderBook},
         domain::{
             execution_event::ExecutionEvent,
             order::{Order, OrderEvent, OrderSide, OrderType},
@@ -198,5 +203,65 @@ mod tests {
             },
             event
         );
+    }
+
+    #[test]
+    fn order_book_test() {
+        let factory = || FifoPriceLevel::new();
+        let mut order_book = OrderBook::new(factory);
+        let scales = Scales::new(100, 1000);
+        for id in 0..50000 {
+            let order = random_order(id, &scales);
+            order_book.add_order(order).unwrap();
+        }
+        assert_eq!(50000 as usize, order_book.size());
+
+        for id in 0..50000 {
+            order_book.cancel(id).unwrap();
+        }
+        assert_eq!(0, order_book.size());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn gtc_order_test() {
+        let order = Order {
+            id: 1,
+            side: OrderSide::Buy,
+            px: PriceTicks(2000),
+            qty: QtyLots(20),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::GTC,
+        };
+
+        let factory = || FifoPriceLevel::new();
+        let book = OrderBook::new(factory);
+        let (client, _jh) = BookActor::run(book, 1024);
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
+
+        let order = Order {
+            id: 2,
+            side: OrderSide::Sell,
+            px: PriceTicks(1000),
+            qty: QtyLots(10),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::GTC,
+        };
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
+
+        let order = Order {
+            id: 3,
+            side: OrderSide::Sell,
+            px: PriceTicks(1000),
+            qty: QtyLots(10),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::IOC,
+        };
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
     }
 }

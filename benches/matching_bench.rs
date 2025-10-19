@@ -4,7 +4,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 
 use futures_util::future::join_all;
 use quantedge_x::matcher::{
-    book::orderbook::OrderBook,
+    book::{book_ops::OrderBookOps, orderbook::OrderBook},
     domain::{
         order::{Order, OrderSide, OrderType},
         price_ticks::PriceTicks,
@@ -49,13 +49,13 @@ pub fn random_order(id: u64, scales: &Scales) -> Order {
     }
 }
 
-fn bench_sequential_orders(c: &mut Criterion) {
+fn bench_sequential_match_orders(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let scales = Scales::new(100, 1000);
     let orders: Vec<Order> = (1..=5_000_000)
         .map(|id| random_order(id, &scales))
         .collect();
-    c.bench_function("sequential_place_5000000_orders", |b| {
+    c.bench_function("sequential_match_5000000_orders", |b| {
         b.to_async(&rt).iter(|| async {
             let factory = || FifoPriceLevel::new();
             let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
@@ -66,10 +66,10 @@ fn bench_sequential_orders(c: &mut Criterion) {
     });
 }
 
-fn bench_concurrent_orders(c: &mut Criterion) {
+fn bench_concurrent_match_orders(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
 
-    c.bench_function("concurrent_place_5000000_orders", |b| {
+    c.bench_function("concurrent_match_5000000_orders", |b| {
         b.to_async(&rt).iter(|| async {
             let factory = || FifoPriceLevel::new();
             let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
@@ -95,6 +95,36 @@ fn bench_concurrent_orders(c: &mut Criterion) {
     });
 }
 
+fn bench_sequential_add_orders(c: &mut Criterion) {
+    let rt = Runtime::new().unwrap();
+    let scales = Scales::new(100, 1000);
+    let orders: Vec<Order> = (1..=5_000_000)
+        .map(|id| random_order(id, &scales))
+        .collect();
+    c.bench_function("sequential_place_5000000_orders", |b| {
+        b.to_async(&rt).iter(|| async {
+            let factory = || FifoPriceLevel::new();
+            let mut order_book = OrderBook::new(factory);
+            for order in orders.iter() {
+                order_book.add_order(order.clone()).unwrap();
+            }
+        });
+    });
+}
+
+fn bench_sequential_cancel_orders(c: &mut Criterion) {
+    let rt = Runtime::new().unwrap();
+    c.bench_function("sequential_cancel_5000000_orders", |b| {
+        b.to_async(&rt).iter(|| async {
+            let factory = || FifoPriceLevel::new();
+            let mut order_book = OrderBook::new(factory);
+            for id in 0..5000000 {
+                order_book.cancel(id).unwrap();
+            }
+        });
+    });
+}
+
 fn custom_criterion() -> Criterion {
     Criterion::default()
         .sample_size(10)
@@ -102,8 +132,15 @@ fn custom_criterion() -> Criterion {
 }
 
 criterion_group!(
-    name = benches;
+    name = match_benches;
     config = custom_criterion();
-    targets = bench_sequential_orders, bench_concurrent_orders
+    targets = bench_sequential_match_orders, bench_concurrent_match_orders
 );
-criterion_main!(benches);
+
+criterion_group!(
+    name = order_book_benches;
+    config = custom_criterion();
+    targets = bench_sequential_add_orders,bench_sequential_cancel_orders
+);
+
+criterion_main!(order_book_benches);

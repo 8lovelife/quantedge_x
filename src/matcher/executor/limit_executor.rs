@@ -29,10 +29,15 @@ impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
             OrderSide::Sell => self.policy.execute_sell(book, Some(order.px), order.qty)?,
         };
 
+        if let TifPolicyResult::AcceptedAndPlaced { ref rest, .. } = resp {
+            let mut rest_order = order.clone();
+            rest_order.qty = rest.qty;
+            book.add_order(rest_order)?;
+        }
+        Ok(ExecutionResult::from_tif_result(order, resp))
+
         // if let Some(rest) = resp.rest.as_ref() {
         //     book.insert_resting(rest.clone())?;
         // }
-
-        Ok(ExecutionResult::from_tif_result(order, resp))
     }
 }
