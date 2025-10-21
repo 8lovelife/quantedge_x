@@ -1,8 +1,11 @@
 use chrono::{DateTime, Utc};
 
 use crate::matcher::domain::{
-    fill::Fill, order::OrderSide, price_ticks::PriceTicks, qty_lots::QtyLots,
-    rest_on_book::RestOnBook,
+    fill::Fill,
+    order::OrderSide,
+    price_ticks::PriceTicks,
+    qty_lots::QtyLots,
+    rest_on_book::{RestOnBook, RestOnBookType},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -78,12 +81,14 @@ impl TifResult {
         side: OrderSide,
         limit: PriceTicks,
         rest_qty: QtyLots,
+        rest_type: RestOnBookType,
         expires_at: Option<DateTime<Utc>>,
     ) {
         let rest = Some(RestOnBook {
             side,
             limit,
             qty: rest_qty,
+            rest_type,
             expires_at,
         });
         self.rest = rest;

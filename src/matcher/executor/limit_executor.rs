@@ -3,9 +3,9 @@ use anyhow::Ok;
 use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
-        execution_event::ExecutionEvent,
         execution_result::ExecutionResult,
         order::{Order, OrderSide},
+        rest_on_book::RestOnBookType,
         tif_policy_result::TifPolicyResult,
     },
     executor::order_executor::OrderTypeExecutor,
@@ -30,9 +30,11 @@ impl<P: TifPolicy, T: OrderBookOps> OrderTypeExecutor<T> for LimitExecutor<P> {
         };
 
         if let TifPolicyResult::AcceptedAndPlaced { ref rest, .. } = resp {
-            let mut rest_order = order.clone();
-            rest_order.qty = rest.qty;
-            book.add_order(rest_order)?;
+            if rest.rest_type == RestOnBookType::AllRest {
+                let mut rest_order = order.clone();
+                rest_order.qty = rest.qty;
+                book.add_order(rest_order)?;
+            }
         }
         Ok(ExecutionResult::from_tif_result(order, resp))
 
