@@ -1,11 +1,13 @@
 use std::time::Duration;
 
+use anyhow::Ok;
 use chrono::Utc;
 use log::info;
 use tokio::sync::mpsc;
 
 use crate::matcher::{
     book::book_ops::OrderBookOps,
+    domain::book_info::BookInfo,
     engine::engine::Engine,
     runtime::{book_client::BookClient, cmd::Cmd},
 };
@@ -74,6 +76,12 @@ where
 
     pub async fn handle_cmd(&mut self, cmd: Cmd) -> anyhow::Result<()> {
         match cmd {
+            Cmd::Info { resp } => {
+                let res = self.book.info()?;
+                if let Some(tx) = resp {
+                    let _ = tx.send(Ok(BookInfo::new(res)));
+                }
+            }
             Cmd::Place { order, resp } => {
                 let res = self.engine.execute(order, &mut self.book);
                 if let Some(tx) = resp {
@@ -93,7 +101,7 @@ where
     pub async fn drain_batch(&mut self, max: usize) -> anyhow::Result<()> {
         for _ in 0..max {
             match self.rx.try_recv() {
-                Ok(cmd) => self.handle_cmd(cmd).await?,
+                Result::Ok(cmd) => self.handle_cmd(cmd).await?,
                 Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
                 Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
             }
@@ -239,19 +247,22 @@ mod tests {
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
 
         let order = Order {
             id: 2,
             side: OrderSide::Sell,
-            px: PriceTicks(1000),
-            qty: QtyLots(10),
+            px: PriceTicks(2000),
+            qty: QtyLots(30),
             order_type: OrderType::Limit,
             tif: TimeInForce::GTC,
         };
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
-
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
         let order = Order {
             id: 3,
             side: OrderSide::Sell,
@@ -263,5 +274,7 @@ mod tests {
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
     }
 }

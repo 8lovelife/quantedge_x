@@ -34,7 +34,7 @@ impl TifPolicy for GttPolicy {
                     side: OrderSide::Buy,
                     limit,
                     qty: want,
-                    rest_type: RestOnBookType::PartialRest,
+                    rest_type: RestOnBookType::AllRest,
                     expires_at: Some(self.expires_at),
                 },
                 None,

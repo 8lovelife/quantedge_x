@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    i64,
+    fmt, i64,
 };
 
 use anyhow::Ok;
@@ -8,7 +8,6 @@ use anyhow::Ok;
 use crate::matcher::{
     book::book_ops::OrderBookOps,
     domain::{
-        fill::Fill,
         order::{Order, OrderSide},
         price_ticks::PriceTicks,
         qty_lots::QtyLots,
@@ -221,26 +220,24 @@ where
         }
         Ok(false)
     }
-    // fn sweep_market_sell(&mut self, mut want: QtyLots) -> anyhow::Result<(Vec<Fill>, QtyLots)> {
-    //     let init_want = want;
-    //     let mut clear_pxs = Vec::new();
-    //     let mut fills = Vec::new();
-    //     for (&px, lvl) in self.bids.iter_mut() {
-    //         let (mut part, got) = lvl.allocate(want);
-    //         fills.append(&mut part);
-    //         want -= got;
-    //         if lvl.total()?.0 == 0 {
-    //             clear_pxs.push(px);
-    //         }
-    //         if want.0 <= 0 {
-    //             break;
-    //         }
-    //     }
-    //     for px in clear_pxs {
-    //         self.bids.remove(&px);
-    //     }
-    //     let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
-    //     debug_assert_eq!(filled, init_want - want);
-    //     Result::Ok((fills, init_want - want))
-    // }
+
+    fn info(&self) -> anyhow::Result<String> {
+        let mut out = String::new();
+
+        out.push_str("=== OrderBook Snapshot ===\n");
+
+        out.push_str("-- Bids --\n");
+        for (price, level) in self.bids.iter().rev() {
+            let count = level.total()?;
+            out.push_str(&format!("{{ price: {}, count: {} }}\n", price.0, count));
+        }
+
+        out.push_str("-- Asks --\n");
+        for (price, level) in self.asks.iter() {
+            let count = level.total()?;
+            out.push_str(&format!("{{ price: {}, count: {} }}\n", price.0, count));
+        }
+
+        Ok(out)
+    }
 }

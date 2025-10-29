@@ -52,10 +52,8 @@ pub fn random_order(id: u64, scales: &Scales) -> Order {
 fn bench_sequential_match_orders(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let scales = Scales::new(100, 1000);
-    let orders: Vec<Order> = (1..=5_000_000)
-        .map(|id| random_order(id, &scales))
-        .collect();
-    c.bench_function("sequential_match_5000000_orders", |b| {
+    let orders: Vec<Order> = (1..=500_000).map(|id| random_order(id, &scales)).collect();
+    c.bench_function("sequential_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
             let factory = || FifoPriceLevel::new();
             let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
@@ -69,16 +67,14 @@ fn bench_sequential_match_orders(c: &mut Criterion) {
 fn bench_concurrent_match_orders(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
 
-    c.bench_function("concurrent_match_5000000_orders", |b| {
+    c.bench_function("concurrent_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
             let factory = || FifoPriceLevel::new();
             let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
             let client = Arc::new(client);
 
             let scales = Scales::new(100, 1000);
-            let orders: Vec<Order> = (1..=5_000_000)
-                .map(|id| random_order(id, &scales))
-                .collect();
+            let orders: Vec<Order> = (1..=500_000).map(|id| random_order(id, &scales)).collect();
 
             let futures: Vec<_> = orders
                 .into_iter()
@@ -118,7 +114,7 @@ fn bench_sequential_cancel_orders(c: &mut Criterion) {
         b.to_async(&rt).iter(|| async {
             let factory = || FifoPriceLevel::new();
             let mut order_book = OrderBook::new(factory);
-            for id in 0..5000000 {
+            for id in 0..5_000_000 {
                 order_book.cancel(id).unwrap();
             }
         });
@@ -143,4 +139,4 @@ criterion_group!(
     targets = bench_sequential_add_orders,bench_sequential_cancel_orders
 );
 
-criterion_main!(order_book_benches);
+criterion_main!(match_benches, order_book_benches);

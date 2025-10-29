@@ -1,7 +1,7 @@
 use tokio::sync::{mpsc, oneshot};
 
 use crate::matcher::{
-    domain::{execution_result::ExecutionResult, order::Order},
+    domain::{book_info::BookInfo, execution_result::ExecutionResult, order::Order},
     runtime::cmd::Cmd,
 };
 
@@ -12,6 +12,12 @@ pub struct BookClient {
 impl BookClient {
     pub fn new(tx: mpsc::Sender<Cmd>) -> Self {
         Self { tx }
+    }
+
+    pub async fn info_book(&self) -> anyhow::Result<BookInfo> {
+        let (tx, rx) = oneshot::channel();
+        self.tx.send(Cmd::Info { resp: Some(tx) }).await?;
+        rx.await?
     }
 
     pub async fn place_order(&self, order: Order) -> anyhow::Result<ExecutionResult> {

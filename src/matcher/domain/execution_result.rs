@@ -1,6 +1,6 @@
 use crate::matcher::domain::{
-    execution_event::ExecutionEvent, order::Order, price_ticks::PriceTicks,
-    reject_reason::RejectReason, tif_policy_result::TifPolicyResult,
+    execution_event::ExecutionEvent, order::Order, rest_on_book::RestOnBookType,
+    tif_policy_result::TifPolicyResult,
 };
 
 #[derive(Debug)]
@@ -81,12 +81,14 @@ impl ExecutionResult {
                     });
                 }
 
-                events.push(ExecutionEvent::Placed {
-                    order_id: None,
-                    qty: rest.qty,
-                    price: order.px,
-                    expires_at: None,
-                });
+                if rest.rest_type == RestOnBookType::PartialRest {
+                    events.push(ExecutionEvent::Placed {
+                        order_id: Some(order_id),
+                        qty: rest.qty,
+                        price: order.px,
+                        expires_at: None,
+                    });
+                }
             }
 
             TifPolicyResult::Rejected { reject_reason, .. } => {

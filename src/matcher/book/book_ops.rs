@@ -19,4 +19,6 @@ pub trait OrderBookOps {
     fn add_order(&mut self, o: Order) -> anyhow::Result<()>;
 
     fn cancel(&mut self, id: u64) -> anyhow::Result<bool>;
+
+    fn info(&self) -> anyhow::Result<String>;
 }
