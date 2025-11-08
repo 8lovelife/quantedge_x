@@ -19,7 +19,7 @@ impl FifoPriceLevel {
     pub fn new() -> Self {
         Self {
             total: QtyLots(0),
-            orders: VecDeque::new(),
+            orders: VecDeque::with_capacity(64),
         }
     }
 
