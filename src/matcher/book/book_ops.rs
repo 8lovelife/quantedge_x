@@ -1,8 +1,15 @@
-use crate::matcher::domain::{
-    order::Order, price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult,
+use bincode::{Decode, Encode};
+
+use crate::matcher::{
+    book::orderbook::OrderBook,
+    domain::{order::Order, price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult},
+    policy::price_level::price_level::PriceLevelPolicy,
 };
 
 pub trait OrderBookOps {
+    type Level: PriceLevelPolicy + Encode + Decode<()>;
+    type Factory: Fn() -> Self::Level + Clone;
+
     fn liquidity_up_to_ask(&self, limit: PriceTicks, want: QtyLots) -> anyhow::Result<QtyLots>;
     fn sweep_asks_up_to(&mut self, limit: PriceTicks, want: QtyLots)
     -> anyhow::Result<SweepResult>;
@@ -21,4 +28,6 @@ pub trait OrderBookOps {
     fn cancel(&mut self, id: u64) -> anyhow::Result<bool>;
 
     fn info(&self) -> anyhow::Result<String>;
+
+    fn get_orderbook(self) -> anyhow::Result<OrderBook<Self::Level, Self::Factory>>;
 }

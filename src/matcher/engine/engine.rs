@@ -3,8 +3,6 @@ use crate::matcher::{
     domain::{
         execution_result::ExecutionResult,
         order::{Order, OrderType},
-        tif_policy_result::TifPolicyResult,
-        tif_result::TifResult,
     },
     executor::{
         limit_executor::LimitExecutor, market_executor::MarketExecutor,

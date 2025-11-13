@@ -9,7 +9,7 @@ use crate::matcher::{
     policy::price_level::price_level::PriceLevelPolicy,
 };
 
-#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Serialize, Deserialize, Encode, Decode, Clone)]
 pub struct FifoPriceLevel {
     pub total: QtyLots,
     pub orders: VecDeque<Order>,

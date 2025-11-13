@@ -1,12 +1,13 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    fmt, i64,
+    i64,
 };
 
 use anyhow::Ok;
+use bincode::{Decode, Encode};
 
 use crate::matcher::{
-    book::book_ops::OrderBookOps,
+    book::{book_manager::OrderBookData, book_ops::OrderBookOps},
     domain::{
         order::{Order, OrderSide},
         price_ticks::PriceTicks,
@@ -18,7 +19,7 @@ use crate::matcher::{
 
 pub struct OrderBook<L, F>
 where
-    L: PriceLevelPolicy,
+    L: PriceLevelPolicy + Encode + Decode<()>,
     F: Fn() -> L + Clone,
 {
     bids: BTreeMap<PriceTicks, L>,
@@ -29,7 +30,7 @@ where
 
 impl<L, F> OrderBook<L, F>
 where
-    L: PriceLevelPolicy,
+    L: PriceLevelPolicy + Encode + Decode<()>,
     F: Fn() -> L + Clone,
 {
     pub fn new(factory: F) -> Self {
@@ -41,14 +42,58 @@ where
         }
     }
 
+    pub fn build(
+        bids: BTreeMap<PriceTicks, L>,
+        asks: BTreeMap<PriceTicks, L>,
+        id_index: HashMap<u64, (OrderSide, PriceTicks)>,
+        factory: F,
+    ) -> Self {
+        Self {
+            bids,
+            asks,
+            new_level: factory,
+            id_index,
+        }
+    }
+
+    pub fn snapshot(self) -> OrderBookData<L> {
+        OrderBookData {
+            bids: self.bids,
+            asks: self.asks,
+            id_index: self.id_index,
+        }
+    }
+
     pub fn size(&self) -> usize {
         self.id_index.len()
     }
+
+    pub fn bids(&self) -> &BTreeMap<PriceTicks, L> {
+        &self.bids
+    }
+
+    pub fn asks(&self) -> &BTreeMap<PriceTicks, L> {
+        &self.asks
+    }
+
+    pub fn id_index(&self) -> &HashMap<u64, (OrderSide, PriceTicks)> {
+        &self.id_index
+    }
 }
+
+// #[derive(Encode, Decode)]
+// struct OrderBookData<L>
+// where
+//     L: PriceLevelPolicy + Encode + Decode<()>,
+// {
+//     bids: BTreeMap<PriceTicks, L>,
+//     asks: BTreeMap<PriceTicks, L>,
+//     id_index: HashMap<u64, (OrderSide, PriceTicks)>,
+// }
 
 impl<L, F> OrderBookOps for OrderBook<L, F>
 where
-    L: PriceLevelPolicy,
+    L: PriceLevelPolicy + Encode + Decode<()>,
     F: Fn() -> L + Clone,
 {
     fn liquidity_up_to_ask(&self, limit: PriceTicks, want: QtyLots) -> anyhow::Result<QtyLots> {
@@ -239,5 +284,13 @@ where
         }
 
         Ok(out)
+    }
+
+    type Level = L;
+
+    type Factory = F;
+
+    fn get_orderbook(self) -> anyhow::Result<OrderBook<Self::Level, Self::Factory>> {
+        Ok(self)
     }
 }
