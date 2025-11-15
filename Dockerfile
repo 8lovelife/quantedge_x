@@ -4,7 +4,7 @@
     WORKDIR /app
     
     # Cache dependencies
-    COPY Cargo.toml Cargo.lock ./
+    COPY Cargo.toml Cargo.lock benches/ ./
     RUN mkdir -p src && echo 'fn main() {}' > src/main.rs
     RUN cargo build --release --bin quantedge_x
     RUN rm -r src

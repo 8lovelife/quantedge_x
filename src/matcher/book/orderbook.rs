@@ -35,8 +35,8 @@ where
 {
     pub fn new(factory: F) -> Self {
         Self {
-            bids: BTreeMap::new(),
-            asks: BTreeMap::new(),
+            bids: BTreeMap::<PriceTicks, L>::new(),
+            asks: BTreeMap::<PriceTicks, L>::new(),
             new_level: factory,
             id_index: HashMap::new(),
         }
@@ -80,16 +80,6 @@ where
         &self.id_index
     }
 }
-
-// #[derive(Encode, Decode)]
-// struct OrderBookData<L>
-// where
-//     L: PriceLevelPolicy + Encode + Decode<()>,
-// {
-//     bids: BTreeMap<PriceTicks, L>,
-//     asks: BTreeMap<PriceTicks, L>,
-//     id_index: HashMap<u64, (OrderSide, PriceTicks)>,
-// }
 
 impl<L, F> OrderBookOps for OrderBook<L, F>
 where

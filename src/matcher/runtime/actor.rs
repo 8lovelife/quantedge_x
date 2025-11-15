@@ -51,7 +51,7 @@ where
                 book_manager,
             };
 
-            let mut hb = tokio::time::interval(Duration::from_millis(1000));
+            let mut hb = tokio::time::interval(Duration::from_secs(60));
             hb.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             hb.tick().await;
 
