@@ -56,11 +56,11 @@ where
         }
     }
 
-    pub fn snapshot(self) -> OrderBookData<L> {
+    pub fn snapshot(&self) -> OrderBookData<L> {
         OrderBookData {
-            bids: self.bids,
-            asks: self.asks,
-            id_index: self.id_index,
+            bids: self.bids().clone(),
+            asks: self.asks().clone(),
+            id_index: self.id_index().clone(),
         }
     }
 
@@ -290,7 +290,7 @@ where
 
     type Factory = F;
 
-    fn get_orderbook(self) -> anyhow::Result<OrderBook<Self::Level, Self::Factory>> {
+    fn get_orderbook(&self) -> anyhow::Result<&OrderBook<Self::Level, Self::Factory>> {
         Ok(self)
     }
 }

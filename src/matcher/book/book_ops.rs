@@ -29,5 +29,5 @@ pub trait OrderBookOps {
 
     fn info(&self) -> anyhow::Result<String>;
 
-    fn get_orderbook(self) -> anyhow::Result<OrderBook<Self::Level, Self::Factory>>;
+    fn get_orderbook(&self) -> anyhow::Result<&OrderBook<Self::Level, Self::Factory>>;
 }

@@ -1,39 +1,57 @@
 use std::time::Duration;
 
 use anyhow::Ok;
+use bincode::{Decode, Encode};
 use chrono::Utc;
 use log::info;
 use tokio::sync::mpsc;
 
 use crate::matcher::{
-    book::book_ops::OrderBookOps,
+    book::{book_manager::OrderBookManager, book_ops::OrderBookOps},
     domain::book_info::BookInfo,
     engine::engine::Engine,
+    policy::price_level::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
     runtime::{book_client::BookClient, cmd::Cmd},
+    storage::{Storage, localfile_storage::LocalFileStorage},
 };
 
-pub struct BookActor<T: OrderBookOps> {
+pub struct BookActor<T: OrderBookOps, L, F, S>
+where
+    T: OrderBookOps + Send + 'static,
+    L: PriceLevelPolicy + Encode + Decode<()>,
+    F: Fn() -> L + Clone,
+    S: Storage,
+{
     pub rx: mpsc::Receiver<Cmd>,
     pub book: T,
     pub engine: Engine,
+    pub book_manager: OrderBookManager<L, F, S>,
 }
 
-impl<T: OrderBookOps> BookActor<T>
+impl<T: OrderBookOps, L, F, S> BookActor<T, L, F, S>
 where
     T: OrderBookOps + Send + 'static,
+    L: PriceLevelPolicy + Encode + Decode<()>,
+    F: Fn() -> L + Clone,
+    S: Storage,
 {
     pub fn run(book: T, capacity: usize) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx);
 
         let handle = tokio::spawn(async move {
+            let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+            let factory = || FifoPriceLevel::new();
+            let book_manager = OrderBookManager::new(storage, factory);
+
             let mut actor = BookActor {
                 rx,
                 book,
                 engine: Engine,
+                book_manager,
             };
 
-            let mut hb = tokio::time::interval(Duration::from_millis(100));
+            let mut hb = tokio::time::interval(Duration::from_millis(1000));
             hb.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             hb.tick().await;
 
@@ -71,6 +89,8 @@ where
     pub async fn handle_tick(&mut self) -> anyhow::Result<()> {
         let now = Utc::now();
         info!("[tick] {}", now.to_rfc3339());
+        let book = self.book.get_orderbook()?;
+        self.book_manager.save(book)?;
         Result::Ok(())
     }
 
@@ -132,6 +152,7 @@ mod tests {
         },
         policy::price_level::fifo::FifoPriceLevel,
         runtime::actor::BookActor,
+        storage::localfile_storage::LocalFileStorage,
     };
 
     pub fn random_order(id: u64, scales: &Scales) -> Order {
@@ -167,8 +188,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_book() {
-        let factory = || FifoPriceLevel::new();
-        let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+        // let factory: fn() -> FifoPriceLevel = FifoPriceLevel::new;
+        // let order_book: OrderBook<FifoPriceLevel, _> = OrderBook::new(factory);
+        // let (client, _jh) =
+        //     BookActor::<_, FifoPriceLevel, _, LocalFileStorage>::run(order_book, 1024);
+
+        // 1. 定义工厂函数指针类型
+        fn factory() -> FifoPriceLevel {
+            FifoPriceLevel::new()
+        }
+
+        // 2. 显式 OrderBook 类型
+        let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
+
+        // 3. 显式 BookActor 类型
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::run(order_book, 1024);
+
         let client_clone = Arc::new(client);
         let mut handles = Vec::new();
         let scales = Scales::new(100, 1000);
@@ -190,8 +230,24 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn actor_smoke_exec() {
-        let factory = || FifoPriceLevel::new();
-        let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+        // let factory = || FifoPriceLevel::new();
+        // let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+
+        // 1. 定义工厂函数指针类型
+        fn factory() -> FifoPriceLevel {
+            FifoPriceLevel::new()
+        }
+
+        // 2. 显式 OrderBook 类型
+        let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
+
+        // 3. 显式 BookActor 类型
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::run(order_book, 1024);
         let order = Order {
             id: 1,
             side: OrderSide::Buy,
@@ -241,9 +297,25 @@ mod tests {
             tif: TimeInForce::GTC,
         };
 
-        let factory = || FifoPriceLevel::new();
-        let book = OrderBook::new(factory);
-        let (client, _jh) = BookActor::run(book, 1024);
+        // let factory = || FifoPriceLevel::new();
+        // let book = OrderBook::new(factory);
+        // let (client, _jh) = BookActor::run(book, 1024);
+
+        // 1. 定义工厂函数指针类型
+        fn factory() -> FifoPriceLevel {
+            FifoPriceLevel::new()
+        }
+
+        // 2. 显式 OrderBook 类型
+        let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
+
+        // 3. 显式 BookActor 类型
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::run(order_book, 1024);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);

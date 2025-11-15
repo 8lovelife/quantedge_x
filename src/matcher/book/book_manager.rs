@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bincode::{Decode, Encode, config::standard, decode_from_slice, encode_into_std_write};
+use bincode::{Decode, Encode, config::standard, encode_into_std_write};
 use std::{
     collections::{BTreeMap, HashMap},
     marker::PhantomData,
@@ -36,7 +36,11 @@ where
         }
     }
 
-    pub fn save(&self, book: OrderBook<L, F>) -> Result<()> {
+    pub fn save<LL, FF>(&self, book: &OrderBook<LL, FF>) -> Result<()>
+    where
+        LL: PriceLevelPolicy + Encode + Decode<()>,
+        FF: Fn() -> LL + Clone,
+    {
         let data = book.snapshot();
         let mut buf = Vec::new();
         encode_into_std_write(&data, &mut buf, standard())?;

@@ -14,6 +14,7 @@ use quantedge_x::matcher::{
     },
     policy::price_level::fifo::FifoPriceLevel,
     runtime::actor::BookActor,
+    storage::localfile_storage::LocalFileStorage,
 };
 use rand::Rng;
 use tokio::runtime::Runtime;
@@ -55,8 +56,26 @@ fn bench_sequential_match_orders(c: &mut Criterion) {
     let orders: Vec<Order> = (1..=500_000).map(|id| random_order(id, &scales)).collect();
     c.bench_function("sequential_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
-            let factory = || FifoPriceLevel::new();
-            let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+            // let factory = || FifoPriceLevel::new();
+            // let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+
+            // 1. 定义工厂函数指针类型
+            fn factory() -> FifoPriceLevel {
+                FifoPriceLevel::new()
+            }
+
+            // 2. 显式 OrderBook 类型
+            let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> =
+                OrderBook::new(factory);
+
+            // 3. 显式 BookActor 类型
+            let (client, _jh) = BookActor::<
+                OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+                FifoPriceLevel,                                    // L
+                fn() -> FifoPriceLevel,                            // F
+                LocalFileStorage,                                  // S
+            >::run(order_book, 1024);
+
             for order in orders.iter() {
                 let _ = client.place_order(order.clone()).await.unwrap();
             }
@@ -69,8 +88,25 @@ fn bench_concurrent_match_orders(c: &mut Criterion) {
 
     c.bench_function("concurrent_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
-            let factory = || FifoPriceLevel::new();
-            let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+            // let factory = || FifoPriceLevel::new();
+            // let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+
+            // 1. 定义工厂函数指针类型
+            fn factory() -> FifoPriceLevel {
+                FifoPriceLevel::new()
+            }
+
+            // 2. 显式 OrderBook 类型
+            let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> =
+                OrderBook::new(factory);
+
+            // 3. 显式 BookActor 类型
+            let (client, _jh) = BookActor::<
+                OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+                FifoPriceLevel,                                    // L
+                fn() -> FifoPriceLevel,                            // F
+                LocalFileStorage,                                  // S
+            >::run(order_book, 1024);
             let client = Arc::new(client);
 
             let scales = Scales::new(100, 1000);

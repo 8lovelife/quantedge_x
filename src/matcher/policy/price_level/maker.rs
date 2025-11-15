@@ -2,11 +2,11 @@ use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::matcher::{
-    domain::{allocation_result::AllocationResult, fill::Fill, order::Order, qty_lots::QtyLots},
+    domain::{allocation_result::AllocationResult, order::Order, qty_lots::QtyLots},
     policy::price_level::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
 };
 
-#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Serialize, Deserialize, Encode, Decode, Clone)]
 pub struct MakerPriceLevel {
     pub inner: FifoPriceLevel,
 }
