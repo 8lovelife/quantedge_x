@@ -35,6 +35,37 @@ where
     F: Fn() -> L + Clone,
     S: Storage,
 {
+    pub fn new(
+        rx: mpsc::Receiver<Cmd>,
+        book: T,
+        engine: Engine,
+        book_manager: OrderBookManager<L, F, S>,
+    ) -> Self {
+        BookActor {
+            rx,
+            book,
+            engine,
+            book_manager,
+        }
+    }
+
+    pub fn build_actor(book: T, capacity: usize) -> (BookClient, tokio::task::JoinHandle<()>) {
+        let (tx, rx) = mpsc::channel::<Cmd>(capacity);
+        let book_client = BookClient::new(tx.clone());
+
+        let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+        let factory = || FifoPriceLevel::new();
+        let book_manager = OrderBookManager::new(storage, factory);
+
+        let actor = BookActor::new(rx, book, Engine, book_manager);
+
+        let handle = tokio::spawn(async move {
+            actor.run_loop(300).await;
+        });
+
+        (book_client, handle)
+    }
+
     pub fn run(book: T, capacity: usize) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx);
@@ -84,6 +115,39 @@ where
         });
 
         (book_client, handle)
+    }
+
+    pub async fn run_loop(mut self, secs: u64) {
+        let mut hb = tokio::time::interval(Duration::from_secs(secs));
+        hb.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        hb.tick().await;
+
+        loop {
+            tokio::select! {
+
+                _ = hb.tick() => {
+                    if let Err(e) = self.handle_tick().await {
+                        eprintln!("[actor] handle_tick error: {e:#}");
+                    }
+                }
+
+                maybe = self.rx.recv() => {
+                    match maybe {
+                        Some(cmd) => {
+                            if let Err(e) = self.handle_cmd(cmd).await {
+                                eprintln!("[actor] handle_cmd error: {e:#}");
+                            }
+                            if let Err(e) = self.drain_batch(256).await {
+                                eprintln!("[actor] drain_batch error: {e:#}");
+                            }
+                        }
+                        None => {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub async fn handle_tick(&mut self) -> anyhow::Result<()> {
