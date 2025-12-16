@@ -200,18 +200,16 @@ mod tests {
     use std::sync::Arc;
 
     use rand::Rng;
-    use tokio::{sync::mpsc, task::Id};
 
     use crate::matcher::{
         book::{book_ops::OrderBookOps, orderbook::OrderBook},
         domain::{
             execution_event::ExecutionEvent,
-            order::{Order, OrderEvent, OrderSide, OrderType},
+            order::{Order, OrderSide, OrderType},
             price_ticks::PriceTicks,
             qty_lots::QtyLots,
             reject_reason::RejectReason,
             scales::Scales,
-            tif_result::TifStatus,
             time_in_force::TimeInForce,
         },
         policy::price_level::fifo::FifoPriceLevel,
@@ -380,6 +378,63 @@ mod tests {
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
         >::run(order_book, 1024);
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
+
+        let order = Order {
+            id: 2,
+            side: OrderSide::Sell,
+            px: PriceTicks(2000),
+            qty: QtyLots(30),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::GTC,
+        };
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
+        let order = Order {
+            id: 3,
+            side: OrderSide::Sell,
+            px: PriceTicks(1000),
+            qty: QtyLots(10),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::IOC,
+        };
+
+        let result = client.place_order(order).await.unwrap();
+        println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn gtc_new_order_test() {
+        let order = Order {
+            id: 1,
+            side: OrderSide::Buy,
+            px: PriceTicks(2000),
+            qty: QtyLots(20),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::GTC,
+        };
+
+        fn factory() -> FifoPriceLevel {
+            FifoPriceLevel::new()
+        }
+
+        let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
+
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::build_actor(order_book, 1024);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
