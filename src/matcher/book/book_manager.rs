@@ -47,7 +47,7 @@ where
         self.storage.save_snapshot(&buf)
     }
 
-    pub fn load(self) -> Result<OrderBook<L, F>> {
+    pub fn load(&self) -> Result<OrderBook<L, F>> {
         let bytes = self
             .storage
             .load_latest_snapshot()?
@@ -60,7 +60,7 @@ where
             data.bids,
             data.asks,
             data.id_index,
-            self.new_level,
+            self.new_level.clone(),
         ))
     }
 }

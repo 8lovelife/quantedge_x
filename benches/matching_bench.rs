@@ -74,7 +74,7 @@ fn bench_sequential_match_orders(c: &mut Criterion) {
                 FifoPriceLevel,                                    // L
                 fn() -> FifoPriceLevel,                            // F
                 LocalFileStorage,                                  // S
-            >::run(order_book, 1024);
+            >::build_actor(order_book, 1024, 100);
 
             for order in orders.iter() {
                 let _ = client.place_order(order.clone()).await.unwrap();

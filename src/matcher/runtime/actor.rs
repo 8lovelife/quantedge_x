@@ -49,7 +49,11 @@ where
         }
     }
 
-    pub fn build_actor(book: T, capacity: usize) -> (BookClient, tokio::task::JoinHandle<()>) {
+    pub fn build_actor(
+        book: T,
+        capacity: usize,
+        secs: u64,
+    ) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx.clone());
 
@@ -60,7 +64,24 @@ where
         let actor = BookActor::new(rx, book, Engine, book_manager);
 
         let handle = tokio::spawn(async move {
-            actor.run_loop(300).await;
+            actor.run_loop(secs).await;
+        });
+
+        (book_client, handle)
+    }
+
+    pub fn re_build_actor(capacity: usize, secs: u64) -> (BookClient, tokio::task::JoinHandle<()>) {
+        let (tx, rx) = mpsc::channel::<Cmd>(capacity);
+        let book_client = BookClient::new(tx.clone());
+
+        let storage = LocalFileStorage::new(".orderbook_snapshot", 10, "btc-usdt");
+        let factory = || FifoPriceLevel::new();
+        let book_manager = OrderBookManager::new(storage, factory);
+        let book = book_manager.load().unwrap();
+        let actor = BookActor::new(rx, book, Engine, book_manager);
+
+        let handle = tokio::spawn(async move {
+            actor.run_loop(secs).await;
         });
 
         (book_client, handle)
@@ -269,13 +290,14 @@ mod tests {
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::run(order_book, 1024);
+        >::build_actor(order_book, 1024, 5);
 
         let client_clone = Arc::new(client);
         let mut handles = Vec::new();
         let scales = Scales::new(100, 1000);
         for id in 1..=1400000 {
-            let order = random_order(id, &scales);
+            let mut order = random_order(id, &scales);
+            order.tif = TimeInForce::GTC;
             let client = client_clone.clone();
             let handle = tokio::spawn(async move {
                 let result = client.place_order(order).await;
@@ -288,6 +310,10 @@ mod tests {
             let result = handle.await.unwrap();
             // println!("{:?}", result);
         }
+
+        let client = client_clone.clone();
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -434,7 +460,7 @@ mod tests {
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::build_actor(order_book, 1024);
+        >::build_actor(order_book, 1024, 300);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
@@ -465,6 +491,18 @@ mod tests {
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
+        let info = client.info_book().await.unwrap();
+        println!("order book info {}", info.info);
+    }
+
+    #[tokio::test]
+    async fn re_build_actor() {
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::re_build_actor(1024, 300);
         let info = client.info_book().await.unwrap();
         println!("order book info {}", info.info);
     }
