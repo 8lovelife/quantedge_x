@@ -24,23 +24,12 @@ use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
 
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 
-use crate::data::coin_market::CoinsMarket;
+use crate::{data::coin_market::CoinsMarket, models::market_price_data::MarketPriceData};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SymbolConfig {
     symbol: String,
     interval_ms: u64,
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct MarketPriceData {
-    symbol: String,
-    timestamp: u64,
-    open: f64,
-    high: f64,
-    low: f64,
-    close: f64,
-    volume: f64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -201,11 +190,11 @@ fn rand_price_by_symbol(symbol: &str) -> f64 {
     return base + rng.gen_range(-delta..delta);
 }
 
-fn current_ts() -> u64 {
+fn current_ts() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_millis() as u64
+        .as_millis() as i64
 }
 
 pub async fn handle_web_socket(

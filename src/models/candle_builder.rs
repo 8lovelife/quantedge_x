@@ -1,15 +1,15 @@
 #[derive(Debug)]
 pub struct CandleBuilder {
-    open_ts: i64,
-    open: f64,
-    high: f64,
-    low: f64,
-    close: f64,
-    volume: f64,
+    pub open_ts: i64,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
 }
 
 impl CandleBuilder {
-    fn new(ts: i64, price: f64, qty: f64) -> Self {
+    pub fn new(ts: i64, price: f64, qty: f64) -> Self {
         Self {
             open_ts: ts,
             open: price,
@@ -20,7 +20,7 @@ impl CandleBuilder {
         }
     }
 
-    fn update(&mut self, price: f64, qty: f64) {
+    pub fn update(&mut self, price: f64, qty: f64) {
         self.high = self.high.max(price);
         self.low = self.low.min(price);
         self.close = price;
