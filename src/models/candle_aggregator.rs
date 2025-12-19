@@ -17,7 +17,7 @@ impl CandleAggregator {
         }
     }
 
-    pub fn on_tick(&mut self, tick: TradeTick) -> Option<MarketPriceData> {
+    pub async fn on_tick(&mut self, tick: TradeTick) -> Option<MarketPriceData> {
         let window_start = tick.ts - (tick.ts % self.interval_ms as i64);
 
         match self.active.get_mut(&tick.symbol) {
