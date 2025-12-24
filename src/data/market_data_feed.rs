@@ -1,9 +1,12 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::OnceLock;
 
-use tokio::sync::{Mutex, broadcast, mpsc};
+use tokio::sync::{broadcast, mpsc};
 
 use crate::{
-    data::data_feed::DataFeed,
+    data::{
+        data_feed::DataFeed,
+        market_data_bus::{combine_ticks, start_market_data_bus},
+    },
     models::{
         candle_aggregator::CandleAggregator, market_price_data::MarketPriceData,
         trade_tick::TradeTick,
@@ -12,6 +15,8 @@ use crate::{
 };
 
 use super::coin_market::CoinsMarket;
+
+static MARKET_DATA_FEED: OnceLock<broadcast::Sender<TradeTick>> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct MarketDataFeed {
@@ -49,59 +54,27 @@ impl DataFeed for MarketDataFeed {
     }
 }
 
-async fn start_binance_ws(tx: mpsc::Sender<TradeTick>) {
-    loop {
-        let tick = TradeTick {
-            symbol: "BTC/USDT".into(),
-            ts: chrono::Utc::now().timestamp_millis(),
-            price: rand::random::<f64>() * 30000.0,
-            qty: rand::random::<f64>() * 5.0,
-        };
-        let _ = tx.send(tick).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
-    }
-}
-
-async fn start_coinbase_ws(tx: mpsc::Sender<TradeTick>) {
-    loop {
-        let tick = TradeTick {
-            symbol: "ETH/USDT".into(),
-            ts: chrono::Utc::now().timestamp_millis(),
-            price: rand::random::<f64>() * 2000.0,
-            qty: rand::random::<f64>() * 10.0,
-        };
-        let _ = tx.send(tick).await;
-        tokio::time::sleep(Duration::from_millis(700)).await;
-    }
-}
-
-async fn tick_broadcast_task(
-    mut tick_rx: mpsc::Receiver<TradeTick>,
-    broadcast_tx: broadcast::Sender<TradeTick>,
-) {
-    while let Some(tick) = tick_rx.recv().await {
-        let _ = broadcast_tx.send(tick);
-    }
-}
-
-async fn symbol_kline_task(
+pub async fn symbol_kline_task(
     symbol: String,
     interval_ms: u64,
-    mut rx: broadcast::Receiver<TradeTick>,
     broadcast_tx: broadcast::Sender<MarketPriceData>,
 ) {
-    let builder = Arc::new(Mutex::new(CandleAggregator::new(interval_ms)));
+    let tick_bus = start_market_data_bus(symbol.to_string(), interval_ms).await;
+    let raw_rx = tick_bus.subscribe();
 
-    while let Ok(tick) = rx.recv().await {
+    let (combine_tx, _) = broadcast::channel::<TradeTick>(1000);
+    let mut combined_rx = combine_tx.subscribe();
+
+    tokio::spawn(async move {
+        combine_ticks(raw_rx, combine_tx, interval_ms).await;
+    });
+
+    let mut builder = CandleAggregator::new(interval_ms);
+    while let Ok(tick) = combined_rx.recv().await {
         if tick.symbol != symbol {
             continue;
         }
-
-        let finished_candle = {
-            let mut b = builder.lock().await;
-            b.on_tick(tick).await
-        };
-
+        let finished_candle = { builder.on_tick(tick).await };
         if let Some(candle) = finished_candle {
             let _ = broadcast_tx.send(candle);
         }
@@ -112,40 +85,25 @@ async fn symbol_kline_task(
 mod tests {
     use std::time::Duration;
 
-    use tokio::sync::{broadcast, mpsc};
+    use tokio::sync::broadcast;
 
     use crate::{
-        data::market_data_feed::{
-            start_binance_ws, start_coinbase_ws, symbol_kline_task, tick_broadcast_task,
-        },
-        models::{market_price_data::MarketPriceData, trade_tick::TradeTick},
+        data::market_data_feed::symbol_kline_task, models::market_price_data::MarketPriceData,
     };
 
     #[tokio::test]
     async fn test_market_feed() {
-        let (tick_tx, tick_rx) = mpsc::channel::<TradeTick>(1000);
-        let (tick_broadcast_tx, _) = broadcast::channel::<TradeTick>(1000);
-        let (candle_broadcast_tx, _) = broadcast::channel::<MarketPriceData>(1000);
-
-        tokio::spawn(start_binance_ws(tick_tx.clone()));
-        tokio::spawn(start_coinbase_ws(tick_tx.clone()));
-
-        tokio::spawn(tick_broadcast_task(tick_rx, tick_broadcast_tx.clone()));
-
+        let (tick_broadcast_tx, _) = broadcast::channel::<MarketPriceData>(1000);
+        let mut frontend_rx = tick_broadcast_tx.subscribe();
         let symbols = vec!["BTC/USDT".to_string(), "ETH/USDT".to_string()];
         for symbol in symbols {
-            let rx = tick_broadcast_tx.subscribe();
-            let candle_tx = candle_broadcast_tx.clone();
-            tokio::spawn(symbol_kline_task(symbol, 2_000, rx, candle_tx));
+            tokio::spawn(symbol_kline_task(symbol, 2_000, tick_broadcast_tx.clone()));
         }
-
-        let mut frontend_rx = candle_broadcast_tx.subscribe();
         tokio::spawn(async move {
             while let Ok(candle) = frontend_rx.recv().await {
                 println!("Kline: {:?}", candle);
             }
         });
-
         loop {
             tokio::time::sleep(Duration::from_secs(3600)).await;
         }

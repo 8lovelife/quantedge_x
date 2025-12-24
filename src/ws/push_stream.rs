@@ -24,7 +24,10 @@ use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
 
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 
-use crate::{data::coin_market::CoinsMarket, models::market_price_data::MarketPriceData};
+use crate::{
+    data::{coin_market::CoinsMarket, market_data_feed::symbol_kline_task},
+    models::market_price_data::MarketPriceData,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SymbolConfig {
@@ -215,7 +218,7 @@ async fn client_ws(mut socket: WebSocket, params: WsParams, broadcast_map: Broad
         map.entry(key.clone())
             .or_insert_with(|| {
                 let (tx, _) = broadcast::channel(1000);
-                tokio::spawn(start_price_task(symbol.clone(), interval_ms, tx.clone()));
+                tokio::spawn(symbol_kline_task(symbol.clone(), interval_ms, tx.clone()));
                 tx
             })
             .clone()

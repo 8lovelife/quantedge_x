@@ -3,5 +3,7 @@ pub mod csv_data_feed;
 pub mod data_feed;
 pub mod duckdb;
 pub mod fetcher;
+pub mod market_data_bus;
+pub mod market_data_connector;
 pub mod market_data_feed;
 pub mod sleddb;
