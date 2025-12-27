@@ -1,0 +1,1 @@
+websocat 'ws://127.0.0.1:3001/ws?symbol=BTC/USDT&interval_ms=5'

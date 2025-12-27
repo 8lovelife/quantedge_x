@@ -25,7 +25,7 @@ use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 
 use crate::{
-    data::{coin_market::CoinsMarket, market_data_feed::symbol_kline_task},
+    data::market_data_feed::symbol_kline_task,
     models::market_price_data::MarketPriceData,
 };
 
