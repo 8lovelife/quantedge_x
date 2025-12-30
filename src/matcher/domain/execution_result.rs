@@ -1,11 +1,15 @@
-use crate::matcher::domain::{
-    execution_event::ExecutionEvent, order::Order, rest_on_book::RestOnBookType,
-    tif_policy_result::TifPolicyResult,
+use crate::{
+    matcher::domain::{
+        execution_event::ExecutionEvent, order::Order, rest_on_book::RestOnBookType,
+        tif_policy_result::TifPolicyResult,
+    },
+    models::order_book_message::OrderBookMessage,
 };
 
 #[derive(Debug)]
 pub struct ExecutionResult {
     pub events: Vec<ExecutionEvent>,
+    pub order: Order,
 }
 
 impl ExecutionResult {
@@ -99,6 +103,10 @@ impl ExecutionResult {
             }
         }
 
-        Self { events }
+        Self { events, order }
+    }
+
+    pub fn to_delta_message() -> Option<OrderBookMessage> {
+        None
     }
 }

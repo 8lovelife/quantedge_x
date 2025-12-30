@@ -1,4 +1,4 @@
-enum OrderBookMessage {
+pub enum OrderBookMessage {
     Snapshot {
         bids: Vec<(i64, f64)>,
         asks: Vec<(i64, f64)>,
@@ -7,6 +7,7 @@ enum OrderBookMessage {
     Delta {
         bids: Vec<(i64, f64)>,
         asks: Vec<(i64, f64)>,
-        u: u64,
+        start_id: Option<u64>,
+        end_id: u64,
     },
 }
