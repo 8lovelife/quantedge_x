@@ -1,6 +1,9 @@
 use crate::{
     matcher::domain::{
-        execution_event::ExecutionEvent, order::Order, rest_on_book::RestOnBookType,
+        execution_event::ExecutionEvent,
+        order::{Order, OrderSide},
+        qty_lots::QtyLots,
+        rest_on_book::RestOnBookType,
         tif_policy_result::TifPolicyResult,
     },
     models::order_book_message::OrderBookMessage,
@@ -106,7 +109,53 @@ impl ExecutionResult {
         Self { events, order }
     }
 
-    pub fn to_delta_message() -> Option<OrderBookMessage> {
+    pub fn to_delta_message(&self, start_id: u64) -> Option<OrderBookMessage> {
+        // let mut bids = Vec::new();
+        // let mut asks = Vec::new();
+        // let mut end_id = start_id;
+        // let price = &self.order.px;
+        // for evt in self.events {
+        //     match evt {
+        //         ExecutionEvent::Placed {
+        //             order_id,
+        //             qty,
+        //             price,
+        //             ..
+        //         } => {
+        //             match self.order.side {
+        //                 OrderSide::Buy => bids.push((price, qty)),
+        //                 OrderSide::Sell => asks.push((price, qty)),
+        //             }
+        //             end_id = std::cmp::max(end_id, order_id.unwrap_or(0));
+        //         }
+        //         ExecutionEvent::Traded {
+        //             taker_order_id,
+        //             maker_order_id,
+        //             qty,
+        //             price,
+        //             ..
+        //         } => {
+        //             // Taker
+        //             bids.push((price, qty));
+        //             // Maker
+        //             asks.push((price, qty));
+        //         }
+        //         ExecutionEvent::Cancelled {
+        //             order_id,
+        //             cancelled,
+        //             ..
+        //         } => {
+        //             let qty = cancelled.negative();
+        //             match self.order.side {
+        //                 OrderSide::Buy => bids.push((price, &qty)),
+        //                 OrderSide::Sell => asks.push((price, &qty)),
+        //             }
+        //         }
+
+        //         ExecutionEvent::Rejected { .. } => {}
+        //     }
+        // }
+
         None
     }
 }

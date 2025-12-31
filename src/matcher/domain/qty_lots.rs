@@ -19,8 +19,16 @@ impl QtyLots {
         Ok(Self(raw))
     }
 
+    pub fn zero() -> Self {
+        QtyLots(0)
+    }
+
     pub fn is_zero(&self) -> bool {
         self.0 == 0
+    }
+
+    pub fn negative(&self) -> Self {
+        QtyLots(-self.0)
     }
 }
 impl Display for QtyLots {
