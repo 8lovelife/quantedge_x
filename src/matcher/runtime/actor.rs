@@ -460,7 +460,7 @@ mod tests {
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::build_actor(order_book, 1024, 300);
+        >::build_actor(order_book, 1024, 1);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);

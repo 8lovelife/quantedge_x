@@ -26,6 +26,7 @@ where
     asks: BTreeMap<PriceTicks, L>,
     new_level: F,
     id_index: HashMap<u64, (OrderSide, PriceTicks)>,
+    last_update_id: u64,
 }
 
 impl<L, F> OrderBook<L, F>
@@ -39,6 +40,7 @@ where
             asks: BTreeMap::<PriceTicks, L>::new(),
             new_level: factory,
             id_index: HashMap::new(),
+            last_update_id: 0,
         }
     }
 
@@ -47,12 +49,14 @@ where
         asks: BTreeMap<PriceTicks, L>,
         id_index: HashMap<u64, (OrderSide, PriceTicks)>,
         factory: F,
+        last_update_id: u64,
     ) -> Self {
         Self {
             bids,
             asks,
             new_level: factory,
             id_index,
+            last_update_id,
         }
     }
 
@@ -61,6 +65,7 @@ where
             bids: self.bids().clone(),
             asks: self.asks().clone(),
             id_index: self.id_index().clone(),
+            last_update_id: self.last_update_id,
         }
     }
 
@@ -78,6 +83,14 @@ where
 
     pub fn id_index(&self) -> &HashMap<u64, (OrderSide, PriceTicks)> {
         &self.id_index
+    }
+
+    pub fn last_update_id(&self) -> u64 {
+        self.last_update_id
+    }
+
+    pub fn increase_update_id(&mut self) {
+        self.last_update_id += 1
     }
 }
 
@@ -129,6 +142,7 @@ where
         let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
         debug_assert_eq!(filled, init_want - want);
 
+        self.increase_update_id();
         Result::Ok(SweepResult::build(
             fills,
             filled,
@@ -179,6 +193,7 @@ where
         let filled = QtyLots(fills.iter().map(|f| f.qty.0).sum());
         debug_assert_eq!(filled, init_want - want);
 
+        self.increase_update_id();
         Result::Ok(SweepResult::build(
             fills,
             filled,
@@ -272,6 +287,8 @@ where
             let count = level.total()?;
             out.push_str(&format!("{{ price: {}, count: {} }}\n", price.0, count));
         }
+
+        out.push_str(&format!("last update id {}", self.last_update_id));
 
         Ok(out)
     }

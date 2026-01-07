@@ -61,6 +61,7 @@ where
             data.asks,
             data.id_index,
             self.new_level.clone(),
+            data.last_update_id,
         ))
     }
 }
@@ -73,4 +74,5 @@ where
     pub bids: BTreeMap<PriceTicks, L>,
     pub asks: BTreeMap<PriceTicks, L>,
     pub id_index: HashMap<u64, (OrderSide, PriceTicks)>,
+    pub last_update_id: u64,
 }

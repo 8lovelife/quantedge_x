@@ -172,7 +172,8 @@ mod tests {
         let start = Instant::now();
         let order_book = book_manager.load().unwrap();
         println!(
-            "load snapshot cost {}",
+            "load snapshot-{} cost {}",
+            order_book.last_update_id(),
             Instant::now().duration_since(start).as_secs(),
         );
         let load_book_info = order_book.info().unwrap();
