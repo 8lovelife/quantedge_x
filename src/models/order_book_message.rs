@@ -7,7 +7,7 @@ pub enum OrderBookMessage {
     Delta {
         bids: Vec<(i64, f64)>,
         asks: Vec<(i64, f64)>,
-        start_id: Option<u64>,
+        start_id: u64,
         end_id: u64,
     },
 }

@@ -1,8 +1,7 @@
 use crate::{
     matcher::domain::{
         execution_event::ExecutionEvent,
-        order::{Order, OrderSide},
-        qty_lots::QtyLots,
+        order::Order,
         rest_on_book::RestOnBookType,
         tif_policy_result::TifPolicyResult,
     },
