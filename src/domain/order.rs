@@ -12,6 +12,12 @@ pub enum OrderSide {
     Sell,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Side {
+    Ask,
+    Bid,
+}
+
 /// 从执行器返回的成交结果
 #[derive(Debug, Clone)]
 pub struct OrderResponse {

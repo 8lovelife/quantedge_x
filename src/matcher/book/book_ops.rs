@@ -1,9 +1,15 @@
 use bincode::{Decode, Encode};
 
-use crate::matcher::{
-    book::orderbook::OrderBook,
-    domain::{order::Order, price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult},
-    policy::price_level::price_level::PriceLevelPolicy,
+use crate::{
+    domain::order::Side,
+    matcher::{
+        book::orderbook::OrderBook,
+        domain::{
+            order::Order, price_ticks::PriceTicks, qty_lots::QtyLots, sweep_result::SweepResult,
+        },
+        policy::price_level::price_level::PriceLevelPolicy,
+    },
+    models::level_update::LevelUpdate,
 };
 
 pub trait OrderBookOps {
@@ -28,6 +34,8 @@ pub trait OrderBookOps {
     fn cancel(&mut self, id: u64) -> anyhow::Result<bool>;
 
     fn info(&self) -> anyhow::Result<String>;
+
+    fn level_update(&self, prices: Vec<(Side, PriceTicks)>) -> anyhow::Result<Vec<LevelUpdate>>;
 
     fn get_orderbook(&self) -> anyhow::Result<&OrderBook<Self::Level, Self::Factory>>;
 }

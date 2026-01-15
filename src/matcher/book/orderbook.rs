@@ -6,15 +6,19 @@ use std::{
 use anyhow::Ok;
 use bincode::{Decode, Encode};
 
-use crate::matcher::{
-    book::{book_manager::OrderBookData, book_ops::OrderBookOps},
-    domain::{
-        order::{Order, OrderSide},
-        price_ticks::PriceTicks,
-        qty_lots::QtyLots,
-        sweep_result::SweepResult,
+use crate::{
+    domain::order::Side,
+    matcher::{
+        book::{book_manager::OrderBookData, book_ops::OrderBookOps},
+        domain::{
+            order::{Order, OrderSide},
+            price_ticks::PriceTicks,
+            qty_lots::QtyLots,
+            sweep_result::SweepResult,
+        },
+        policy::price_level::price_level::PriceLevelPolicy,
     },
-    policy::price_level::price_level::PriceLevelPolicy,
+    models::level_update::LevelUpdate,
 };
 
 pub struct OrderBook<L, F>
@@ -91,6 +95,11 @@ where
 
     pub fn increase_update_id(&mut self) {
         self.last_update_id += 1
+    }
+
+    pub fn level_qty(&self, side: Side, price: PriceTicks) -> QtyLots {
+        // TODO
+        QtyLots(0)
     }
 }
 
@@ -299,5 +308,13 @@ where
 
     fn get_orderbook(&self) -> anyhow::Result<&OrderBook<Self::Level, Self::Factory>> {
         Ok(self)
+    }
+
+    fn level_update(&self, prices: Vec<(Side, PriceTicks)>) -> anyhow::Result<Vec<LevelUpdate>> {
+        let level_updates: Vec<LevelUpdate> = prices
+            .into_iter()
+            .map(|(side, price)| LevelUpdate::new(side, price, self.level_qty(side, price)))
+            .collect();
+        Ok(level_updates)
     }
 }

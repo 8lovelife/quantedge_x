@@ -1,32 +1,62 @@
-use std::collections::HashMap;
-
 use crate::{
-    matcher::domain::{
-        execution_result::ExecutionResult, price_ticks::PriceTicks, qty_lots::QtyLots,
-    },
-    models::order_book_message::OrderBookMessage,
+    domain::order::Side,
+    models::{level_update::LevelUpdate, order_book_message::OrderBookMessage},
 };
 
 pub struct DeltaBuilder {
-    changes: HashMap<PriceTicks, QtyLots>,
-    first_update_id: u64,
-    last_update_id: u64,
+    changes: Vec<LevelUpdate>,
+    first_update_id: Option<u64>,
+    last_update_id: Option<u64>,
     threshold: usize,
 }
 
 impl DeltaBuilder {
-    pub fn on_event_result(&mut self, result: ExecutionResult, update_id: u64) {
+    pub fn new(threshold: usize) -> Self {
+        Self {
+            changes: Vec::new(),
+            first_update_id: None,
+            last_update_id: None,
+            threshold,
+        }
+    }
+    pub fn on_level_updates(
+        &mut self,
+        updates: Vec<LevelUpdate>,
+        update_id: u64,
+    ) -> Option<OrderBookMessage> {
+        self.first_update_id.get_or_insert(update_id);
+        self.last_update_id = Some(update_id);
+
+        self.changes.extend(updates);
+
         if self.changes.len() >= self.threshold {
-            self.flush();
+            Some(self.flush())
+        } else {
+            None
         }
     }
 
     pub fn flush(&mut self) -> OrderBookMessage {
-        OrderBookMessage::Delta {
-            bids: Vec::new(),
-            asks: Vec::new(),
-            start_id: 1,
-            end_id: 1,
+        let mut bids = Vec::new();
+        let mut asks = Vec::new();
+
+        for update in self.changes.drain(..) {
+            match update.side {
+                Side::Bid => bids.push((update.price, update.new_qty)),
+                Side::Ask => asks.push((update.price, update.new_qty)),
+            }
         }
+
+        let msg = OrderBookMessage::Delta {
+            bids,
+            asks,
+            start_id: self.first_update_id.unwrap(),
+            end_id: self.last_update_id.unwrap(),
+        };
+
+        self.first_update_id = None;
+        self.last_update_id = None;
+
+        msg
     }
 }

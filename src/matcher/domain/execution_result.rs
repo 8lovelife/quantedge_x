@@ -1,22 +1,19 @@
-use crate::{
-    matcher::domain::{
-        execution_event::ExecutionEvent,
-        order::Order,
-        rest_on_book::RestOnBookType,
-        tif_policy_result::TifPolicyResult,
-    },
-    models::order_book_message::OrderBookMessage,
+use crate::matcher::domain::{
+    execution_event::ExecutionEvent, order::Order, price_ticks::PriceTicks,
+    rest_on_book::RestOnBookType, tif_policy_result::TifPolicyResult,
 };
 
 #[derive(Debug)]
 pub struct ExecutionResult {
     pub events: Vec<ExecutionEvent>,
+    pub prices: Vec<PriceTicks>,
     pub order: Order,
 }
 
 impl ExecutionResult {
     pub fn from_tif_result(order: Order, tif_result: TifPolicyResult) -> Self {
         let mut events = Vec::new();
+        let mut prices = Vec::new();
         let order_id = order.id;
         match tif_result {
             TifPolicyResult::Accepted {
@@ -25,6 +22,7 @@ impl ExecutionResult {
                 ..
             } => {
                 for fill in fills {
+                    prices.push(fill.price);
                     events.push(ExecutionEvent::Traded {
                         taker_order_id: order_id,
                         taker_completed: true,
@@ -47,6 +45,7 @@ impl ExecutionResult {
                 ..
             } => {
                 for fill in fills {
+                    prices.push(fill.price);
                     events.push(ExecutionEvent::Traded {
                         taker_order_id: order_id,
                         taker_completed: false,
@@ -105,56 +104,10 @@ impl ExecutionResult {
             }
         }
 
-        Self { events, order }
-    }
-
-    pub fn to_delta_message(&self, start_id: u64) -> Option<OrderBookMessage> {
-        // let mut bids = Vec::new();
-        // let mut asks = Vec::new();
-        // let mut end_id = start_id;
-        // let price = &self.order.px;
-        // for evt in self.events {
-        //     match evt {
-        //         ExecutionEvent::Placed {
-        //             order_id,
-        //             qty,
-        //             price,
-        //             ..
-        //         } => {
-        //             match self.order.side {
-        //                 OrderSide::Buy => bids.push((price, qty)),
-        //                 OrderSide::Sell => asks.push((price, qty)),
-        //             }
-        //             end_id = std::cmp::max(end_id, order_id.unwrap_or(0));
-        //         }
-        //         ExecutionEvent::Traded {
-        //             taker_order_id,
-        //             maker_order_id,
-        //             qty,
-        //             price,
-        //             ..
-        //         } => {
-        //             // Taker
-        //             bids.push((price, qty));
-        //             // Maker
-        //             asks.push((price, qty));
-        //         }
-        //         ExecutionEvent::Cancelled {
-        //             order_id,
-        //             cancelled,
-        //             ..
-        //         } => {
-        //             let qty = cancelled.negative();
-        //             match self.order.side {
-        //                 OrderSide::Buy => bids.push((price, &qty)),
-        //                 OrderSide::Sell => asks.push((price, &qty)),
-        //             }
-        //         }
-
-        //         ExecutionEvent::Rejected { .. } => {}
-        //     }
-        // }
-
-        None
+        Self {
+            events,
+            order,
+            prices,
+        }
     }
 }
