@@ -53,6 +53,7 @@ where
         book: T,
         capacity: usize,
         secs: u64,
+        engine: Engine,
     ) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx.clone());
@@ -61,7 +62,7 @@ where
         let factory = || FifoPriceLevel::new();
         let book_manager = OrderBookManager::new(storage, factory);
 
-        let actor = BookActor::new(rx, book, Engine, book_manager);
+        let actor = BookActor::new(rx, book, engine, book_manager);
 
         let handle = tokio::spawn(async move {
             actor.run_loop(secs).await;
@@ -70,7 +71,11 @@ where
         (book_client, handle)
     }
 
-    pub fn re_build_actor(capacity: usize, secs: u64) -> (BookClient, tokio::task::JoinHandle<()>) {
+    pub fn re_build_actor(
+        capacity: usize,
+        secs: u64,
+        engine: Engine,
+    ) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx.clone());
 
@@ -78,7 +83,7 @@ where
         let factory = || FifoPriceLevel::new();
         let book_manager = OrderBookManager::new(storage, factory);
         let book = book_manager.load().unwrap();
-        let actor = BookActor::new(rx, book, Engine, book_manager);
+        let actor = BookActor::new(rx, book, engine, book_manager);
 
         let handle = tokio::spawn(async move {
             actor.run_loop(secs).await;
@@ -87,7 +92,11 @@ where
         (book_client, handle)
     }
 
-    pub fn run(book: T, capacity: usize) -> (BookClient, tokio::task::JoinHandle<()>) {
+    pub fn run(
+        book: T,
+        capacity: usize,
+        engine: Engine,
+    ) -> (BookClient, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel::<Cmd>(capacity);
         let book_client = BookClient::new(tx);
 
@@ -99,7 +108,7 @@ where
             let mut actor = BookActor {
                 rx,
                 book,
-                engine: Engine,
+                engine,
                 book_manager,
             };
 
@@ -188,7 +197,7 @@ where
                 }
             }
             Cmd::Place { order, resp } => {
-                let res = self.engine.execute(order, &mut self.book);
+                let res = self.engine.execute(order, &mut self.book).await;
                 if let Some(tx) = resp {
                     let _ = tx.send(res);
                 }
@@ -218,24 +227,40 @@ where
 #[cfg(test)]
 mod tests {
 
-    use std::sync::Arc;
+    use std::{
+        collections::HashMap,
+        f32::consts::E,
+        sync::Arc,
+        time::{Duration, Instant},
+    };
 
     use rand::Rng;
+    use tokio::{sync::mpsc, time};
 
-    use crate::matcher::{
-        book::{book_ops::OrderBookOps, orderbook::OrderBook},
-        domain::{
-            execution_event::ExecutionEvent,
-            order::{Order, OrderSide, OrderType},
-            price_ticks::PriceTicks,
-            qty_lots::QtyLots,
-            reject_reason::RejectReason,
-            scales::Scales,
-            time_in_force::TimeInForce,
+    use crate::{
+        domain::order::Side,
+        engine,
+        matcher::{
+            book::{book_ops::OrderBookOps, orderbook::OrderBook},
+            domain::{
+                execution_event::ExecutionEvent,
+                execution_result::ExecutionResult,
+                order::{Order, OrderSide, OrderType},
+                price_ticks::PriceTicks,
+                qty_lots::QtyLots,
+                reject_reason::RejectReason,
+                scales::Scales,
+                time_in_force::TimeInForce,
+            },
+            engine::engine::Engine,
+            policy::price_level::fifo::FifoPriceLevel,
+            runtime::actor::BookActor,
+            storage::localfile_storage::LocalFileStorage,
         },
-        policy::price_level::fifo::FifoPriceLevel,
-        runtime::actor::BookActor,
-        storage::localfile_storage::LocalFileStorage,
+        models::{
+            delta_builder::{self, DeltaBuilder},
+            level_update::{LevelChange, LevelUpdate},
+        },
     };
 
     pub fn random_order(id: u64, scales: &Scales) -> Order {
@@ -284,13 +309,25 @@ mod tests {
         // 2. 显式 OrderBook 类型
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
 
+        let (tx_delta, mut rx_delta) = mpsc::channel(32);
+        let engine = Engine::new(tx_delta);
+
         // 3. 显式 BookActor 类型
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::build_actor(order_book, 1024, 5);
+        >::build_actor(order_book, 1024, 5, engine);
+
+        tokio::spawn(async move {
+            let mut delta_builder = DeltaBuilder::new(10);
+            while let Some(level_change) = rx_delta.recv().await {
+                if let Some(message) = delta_builder.on_level_updates(level_change) {
+                    println!("Delta message {:?}", message);
+                }
+            }
+        });
 
         let client_clone = Arc::new(client);
         let mut handles = Vec::new();
@@ -329,13 +366,16 @@ mod tests {
         // 2. 显式 OrderBook 类型
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
 
+        let (tx_delta, mut rx_delta) = mpsc::channel(32);
+        let engine = Engine::new(tx_delta);
+
         // 3. 显式 BookActor 类型
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::run(order_book, 1024);
+        >::run(order_book, 1024, engine);
         let order = Order {
             id: 1,
             side: OrderSide::Buy,
@@ -397,13 +437,15 @@ mod tests {
         // 2. 显式 OrderBook 类型
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
 
+        let (tx_delta, mut rx_delta) = mpsc::channel(32);
+        let engine = Engine::new(tx_delta);
         // 3. 显式 BookActor 类型
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::run(order_book, 1024);
+        >::run(order_book, 1024, engine);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
@@ -454,13 +496,14 @@ mod tests {
         }
 
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
-
+        let (tx_delta, mut rx_delta) = mpsc::channel::<LevelChange>(32);
+        let engine = Engine::new(tx_delta);
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::build_actor(order_book, 1024, 1);
+        >::build_actor(order_book, 1024, 300, engine);
 
         let result = client.place_order(order).await.unwrap();
         println!("{:?}", result);
@@ -493,16 +536,27 @@ mod tests {
         println!("{:?}", result);
         let info = client.info_book().await.unwrap();
         println!("order book info {}", info.info);
+
+        tokio::spawn(async move {
+            let mut delta_builder = DeltaBuilder::new(10);
+            while let Some(level_change) = rx_delta.recv().await {
+                delta_builder.on_level_updates(level_change);
+            }
+        });
+
+        time::sleep(Duration::from_secs(10)).await;
     }
 
     #[tokio::test]
     async fn re_build_actor() {
+        let (tx_delta, mut rx_delta) = mpsc::channel(32);
+        let engine = Engine::new(tx_delta);
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::re_build_actor(1024, 300);
+        >::re_build_actor(1024, 300, engine);
         let info = client.info_book().await.unwrap();
         println!("order book info {}", info.info);
     }

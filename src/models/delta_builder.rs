@@ -1,6 +1,9 @@
 use crate::{
     domain::order::Side,
-    models::{level_update::LevelUpdate, order_book_message::OrderBookMessage},
+    models::{
+        level_update::{LevelChange, LevelUpdate},
+        order_book_message::OrderBookMessage,
+    },
 };
 
 pub struct DeltaBuilder {
@@ -19,15 +22,13 @@ impl DeltaBuilder {
             threshold,
         }
     }
-    pub fn on_level_updates(
-        &mut self,
-        updates: Vec<LevelUpdate>,
-        update_id: u64,
-    ) -> Option<OrderBookMessage> {
+    pub fn on_level_updates(&mut self, updates: LevelChange) -> Option<OrderBookMessage> {
+        let update_id = updates.update_id;
+        let level_updates = updates.level_updates;
         self.first_update_id.get_or_insert(update_id);
         self.last_update_id = Some(update_id);
 
-        self.changes.extend(updates);
+        self.changes.extend(level_updates);
 
         if self.changes.len() >= self.threshold {
             Some(self.flush())

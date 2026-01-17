@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bincode::{Decode, Encode};
 
 use crate::{
@@ -9,7 +11,7 @@ use crate::{
         },
         policy::price_level::price_level::PriceLevelPolicy,
     },
-    models::level_update::LevelUpdate,
+    models::level_update::LevelChange,
 };
 
 pub trait OrderBookOps {
@@ -35,7 +37,7 @@ pub trait OrderBookOps {
 
     fn info(&self) -> anyhow::Result<String>;
 
-    fn level_update(&self, prices: Vec<(Side, PriceTicks)>) -> anyhow::Result<Vec<LevelUpdate>>;
+    fn level_update(&self, prices: HashMap<Side, Vec<PriceTicks>>) -> anyhow::Result<LevelChange>;
 
     fn get_orderbook(&self) -> anyhow::Result<&OrderBook<Self::Level, Self::Factory>>;
 }

@@ -1,10 +1,11 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     i64,
 };
 
 use anyhow::Ok;
 use bincode::{Decode, Encode};
+use log::Level;
 
 use crate::{
     domain::order::Side,
@@ -18,7 +19,7 @@ use crate::{
         },
         policy::price_level::price_level::PriceLevelPolicy,
     },
-    models::level_update::LevelUpdate,
+    models::level_update::{LevelChange, LevelUpdate},
 };
 
 pub struct OrderBook<L, F>
@@ -97,9 +98,16 @@ where
         self.last_update_id += 1
     }
 
-    pub fn level_qty(&self, side: Side, price: PriceTicks) -> QtyLots {
-        // TODO
-        QtyLots(0)
+    pub fn level_qty(&self, side: Side, price: PriceTicks) -> anyhow::Result<Option<QtyLots>> {
+        if let Some(level) = match side {
+            Side::Ask => self.asks.get(&price),
+            Side::Bid => self.bids.get(&price),
+        } {
+            let qty = level.total()?;
+            Ok(Some(qty))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -310,11 +318,20 @@ where
         Ok(self)
     }
 
-    fn level_update(&self, prices: Vec<(Side, PriceTicks)>) -> anyhow::Result<Vec<LevelUpdate>> {
-        let level_updates: Vec<LevelUpdate> = prices
-            .into_iter()
-            .map(|(side, price)| LevelUpdate::new(side, price, self.level_qty(side, price)))
-            .collect();
-        Ok(level_updates)
+    fn level_update(&self, prices: HashMap<Side, Vec<PriceTicks>>) -> anyhow::Result<LevelChange> {
+        let mut seen = HashSet::new();
+        let mut level_updates = Vec::new();
+        for (side, price_list) in prices {
+            for price in price_list {
+                if !seen.insert((side, price)) {
+                    continue;
+                }
+                let qty = self.level_qty(side, price)?;
+                level_updates.push(LevelUpdate::new(side, price, qty));
+            }
+        }
+        let update_id = self.last_update_id;
+        let level_change = LevelChange::new(update_id, level_updates);
+        Ok(level_change)
     }
 }

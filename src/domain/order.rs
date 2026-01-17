@@ -12,7 +12,7 @@ pub enum OrderSide {
     Sell,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Side {
     Ask,
     Bid,

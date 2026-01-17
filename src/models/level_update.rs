@@ -4,14 +4,29 @@ use crate::{
 };
 
 #[derive(Debug)]
+pub struct LevelChange {
+    pub update_id: u64,
+    pub level_updates: Vec<LevelUpdate>,
+}
+
+impl LevelChange {
+    pub fn new(update_id: u64, level_updates: Vec<LevelUpdate>) -> LevelChange {
+        LevelChange {
+            update_id,
+            level_updates,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct LevelUpdate {
     pub side: Side,
     pub price: PriceTicks,
-    pub new_qty: QtyLots,
+    pub new_qty: Option<QtyLots>,
 }
 
 impl LevelUpdate {
-    pub fn new(side: Side, price: PriceTicks, new_qty: QtyLots) -> LevelUpdate {
+    pub fn new(side: Side, price: PriceTicks, new_qty: Option<QtyLots>) -> LevelUpdate {
         LevelUpdate {
             side,
             price,

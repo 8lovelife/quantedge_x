@@ -1,17 +1,26 @@
-use crate::matcher::domain::{
-    execution_event::ExecutionEvent, order::Order, price_ticks::PriceTicks,
-    rest_on_book::RestOnBookType, tif_policy_result::TifPolicyResult,
+use std::{collections::HashMap, vec};
+
+use crate::{
+    domain::order::Side,
+    matcher::domain::{
+        execution_event::ExecutionEvent,
+        order::{Order, OrderSide, OrderType},
+        price_ticks::PriceTicks,
+        rest_on_book::RestOnBookType,
+        tif_policy_result::TifPolicyResult,
+    },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub events: Vec<ExecutionEvent>,
-    pub prices: Vec<PriceTicks>,
+    pub prices: HashMap<Side, Vec<PriceTicks>>,
     pub order: Order,
 }
 
 impl ExecutionResult {
     pub fn from_tif_result(order: Order, tif_result: TifPolicyResult) -> Self {
+        let mut two_way_prices = HashMap::new();
         let mut events = Vec::new();
         let mut prices = Vec::new();
         let order_id = order.id;
@@ -104,10 +113,18 @@ impl ExecutionResult {
             }
         }
 
+        let (bid_prices, ask_prices) = match (order.order_type, order.side) {
+            (OrderType::Limit, OrderSide::Buy) => (vec![order.px], prices),
+            (OrderType::Limit, OrderSide::Sell) => (prices, vec![order.px]),
+            (OrderType::Market, OrderSide::Buy) => (Vec::new(), prices),
+            (OrderType::Market, OrderSide::Sell) => (prices, Vec::new()),
+        };
+        two_way_prices.insert(Side::Ask, ask_prices);
+        two_way_prices.insert(Side::Bid, bid_prices);
         Self {
             events,
             order,
-            prices,
+            prices: two_way_prices,
         }
     }
 }
