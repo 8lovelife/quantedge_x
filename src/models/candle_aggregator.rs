@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::models::{
-    candle_builder::CandleBuilder, market_price_data::MarketPriceData, trade_tick::TradeTick,
+    candle_builder::CandleBuilder,
+    market_price_data::MarketPriceData,
+    trade_tick::{TradeTick, TradeTickInternal},
 };
 
 pub struct CandleAggregator {
@@ -15,6 +17,11 @@ impl CandleAggregator {
             interval_ms,
             active: HashMap::new(),
         }
+    }
+
+    pub async fn on_internal_tick(&mut self, tick: TradeTickInternal) -> Option<MarketPriceData> {
+        let tick = tick.to_f64(2.0, 1.0);
+        self.on_tick(tick).await
     }
 
     pub async fn on_tick(&mut self, tick: TradeTick) -> Option<MarketPriceData> {

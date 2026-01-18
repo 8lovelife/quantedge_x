@@ -19,6 +19,10 @@ impl QtyLots {
         Ok(Self(raw))
     }
 
+    pub fn to_f64(&self, lot_size: f64) -> f64 {
+        self.0 as f64 * lot_size
+    }
+
     pub fn zero() -> Self {
         QtyLots(0)
     }

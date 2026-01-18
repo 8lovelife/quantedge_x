@@ -50,6 +50,7 @@ impl Engine {
         let prices = result.prices.clone();
         let level_updates = book.level_update(prices)?;
         self.publish(level_updates).await;
+        let events = result.events.clone();
         Ok(result)
     }
 }
