@@ -3,6 +3,7 @@ pub mod book_info;
 pub mod execution_event;
 pub mod execution_result;
 pub mod fill;
+pub mod match_output;
 pub mod order;
 pub mod order_book;
 pub mod price_ticks;

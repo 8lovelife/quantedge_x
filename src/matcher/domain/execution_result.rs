@@ -18,7 +18,20 @@ pub struct ExecutionResult {
     pub order: Order,
 }
 
+#[derive(Debug, Clone)]
+pub struct TradeEventResult {
+    pub order: Order,
+    pub events: Vec<ExecutionEvent>,
+}
+
 impl ExecutionResult {
+    pub fn build_trade_event(&self) -> TradeEventResult {
+        let events = self.events.clone();
+        TradeEventResult {
+            order: self.order.clone(),
+            events,
+        }
+    }
     pub fn from_tif_result(order: Order, tif_result: TifPolicyResult) -> Self {
         let mut two_way_prices = HashMap::new();
         let mut events = Vec::new();

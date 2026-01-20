@@ -6,6 +6,7 @@ use crate::{
         book::book_ops::OrderBookOps,
         domain::{
             execution_result::ExecutionResult,
+            match_output::MatchOutput,
             order::{Order, OrderType},
         },
         executor::{
@@ -31,6 +32,8 @@ impl Engine {
         let _ = self.tx_delta.send(level_change).await;
     }
 
+    pub async fn handle(&self, out: MatchOutput) {}
+
     pub async fn execute<T: OrderBookOps>(
         &mut self,
         order: Order,
@@ -49,8 +52,11 @@ impl Engine {
         }?;
         let prices = result.prices.clone();
         let level_updates = book.level_update(prices)?;
-        self.publish(level_updates).await;
-        let events = result.events.clone();
+        let events = result.build_trade_event();
+
+        let match_out = MatchOutput::new(level_updates, events);
+        self.handle(match_out).await;
+
         Ok(result)
     }
 }
