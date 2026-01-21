@@ -1,38 +1,45 @@
-use anyhow::Ok;
-use tokio::sync::mpsc;
+use std::sync::Arc;
 
-use crate::{
-    matcher::{
-        book::book_ops::OrderBookOps,
-        domain::{
-            execution_result::ExecutionResult,
-            match_output::MatchOutput,
-            order::{Order, OrderType},
-        },
-        executor::{
-            limit_executor::LimitExecutor, market_executor::MarketExecutor,
-            order_executor::OrderTypeExecutor,
-        },
-        policy::tif::tif_policy_factory::obtain_tif_policy,
+use anyhow::Ok;
+use tokio::task::JoinHandle;
+
+use crate::matcher::{
+    book::book_ops::OrderBookOps,
+    domain::{
+        execution_result::ExecutionResult,
+        match_output::MatchOutput,
+        order::{Order, OrderType},
     },
-    models::level_update::LevelChange,
+    engine::{
+        engine_event::EngineEvent,
+        event_router::{EventRouter, create_router_with_workers},
+    },
+    executor::{
+        limit_executor::LimitExecutor, market_executor::MarketExecutor,
+        order_executor::OrderTypeExecutor,
+    },
+    policy::tif::tif_policy_factory::obtain_tif_policy,
 };
 
-#[derive(Clone)]
+type RouteFn = Arc<dyn Fn(EngineEvent) + Send + Sync>;
+
 pub struct Engine {
-    tx_delta: mpsc::Sender<LevelChange>,
+    router: EventRouter,
 }
 
 impl Engine {
-    pub fn new(tx_delta: mpsc::Sender<LevelChange>) -> Self {
-        Self { tx_delta }
+    pub fn new(levelchange_handler: RouteFn, trade_tick_handler: RouteFn) -> Self {
+        let router = create_router_with_workers(levelchange_handler, trade_tick_handler);
+        Self { router }
     }
 
-    pub async fn publish(&self, level_change: LevelChange) {
-        let _ = self.tx_delta.send(level_change).await;
+    pub fn start(&mut self) -> JoinHandle<()> {
+        self.router.spawn()
     }
 
-    pub async fn handle(&self, out: MatchOutput) {}
+    pub async fn handle(&self, out: MatchOutput) {
+        self.router.send_event(out).await;
+    }
 
     pub async fn execute<T: OrderBookOps>(
         &mut self,

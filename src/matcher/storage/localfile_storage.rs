@@ -26,6 +26,10 @@ impl LocalFileStorage {
         }
     }
 
+    pub fn build(keep: usize, snap_prefix: &str) -> Self {
+        LocalFileStorage::new(".orderbook_snapshot", keep, snap_prefix)
+    }
+
     fn snapshot_name_ts(&self) -> String {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -40,8 +44,7 @@ impl LocalFileStorage {
     }
 
     fn list_snapshots_desc(&self) -> anyhow::Result<Vec<PathBuf>> {
-        let mut entries =
-            fs::read_dir(&self.root).unwrap_or_else(|_| panic!("dir: {:?}", self.root));
+        let mut entries = fs::read_dir(&self.root)?;
 
         let mut files = Vec::new();
         while let Some(ent) = entries.next() {

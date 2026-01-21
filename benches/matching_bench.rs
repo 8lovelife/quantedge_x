@@ -18,24 +18,23 @@ use quantedge_x::matcher::{
     storage::localfile_storage::LocalFileStorage,
 };
 use rand::Rng;
-use tokio::{runtime::Runtime, sync::mpsc};
+use tokio::runtime::Runtime;
 
 pub fn random_order(id: u64, scales: &Scales) -> Order {
     let mut rng = rand::thread_rng();
 
-    // 价格范围：100.00 ~ 200.00
+    // 100.00 ~ 200.00
     let px_ticks_range =
         (100.00 * scales.tick_size as f64) as i64..=(200.00 * scales.tick_size as f64) as i64;
     let px_ticks = rng.gen_range(px_ticks_range.clone());
     let px = PriceTicks(px_ticks);
 
-    // 数量范围：0.005 ~ 5.000
+    // 0.005 ~ 5.000
     let qty_lots_range =
         (0.005 * scales.lot_size as f64) as i64..=(5.000 * scales.lot_size as f64) as i64;
     let qty_lots = rng.gen_range(qty_lots_range.clone());
     let qty = QtyLots(qty_lots);
 
-    // 随机方向
     let side = if rng.gen_bool(0.5) {
         OrderSide::Buy
     } else {
@@ -57,27 +56,16 @@ fn bench_sequential_match_orders(c: &mut Criterion) {
     let orders: Vec<Order> = (1..=500_000).map(|id| random_order(id, &scales)).collect();
     c.bench_function("sequential_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
-            // let factory = || FifoPriceLevel::new();
-            // let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+            let levelchange_handler = Arc::new(|e| {});
+            let trade_tick_handler = Arc::new(|e| {});
+            let engine = Engine::new(levelchange_handler, trade_tick_handler);
 
-            // 1. 定义工厂函数指针类型
-            fn factory() -> FifoPriceLevel {
-                FifoPriceLevel::new()
-            }
-
-            // 2. 显式 OrderBook 类型
-            let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> =
-                OrderBook::new(factory);
-
-            let (tx_delta, mut rx_delta) = mpsc::channel(32);
-            let engine = Engine::new(tx_delta);
-            // 3. 显式 BookActor 类型
             let (client, _jh) = BookActor::<
                 OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
                 FifoPriceLevel,                                    // L
                 fn() -> FifoPriceLevel,                            // F
                 LocalFileStorage,                                  // S
-            >::build_actor(order_book, 1024, 100, engine);
+            >::actor(1024, 100, engine);
 
             for order in orders.iter() {
                 let _ = client.place_order(order.clone()).await.unwrap();
@@ -91,28 +79,16 @@ fn bench_concurrent_match_orders(c: &mut Criterion) {
 
     c.bench_function("concurrent_match_500000_orders", |b| {
         b.to_async(&rt).iter(|| async {
-            // let factory = || FifoPriceLevel::new();
-            // let (client, _jh) = BookActor::run(OrderBook::new(factory), 1024);
+            let levelchange_handler = Arc::new(|e| {});
+            let trade_tick_handler = Arc::new(|e| {});
+            let engine = Engine::new(levelchange_handler, trade_tick_handler);
 
-            // 1. 定义工厂函数指针类型
-            fn factory() -> FifoPriceLevel {
-                FifoPriceLevel::new()
-            }
-
-            // 2. 显式 OrderBook 类型
-            let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> =
-                OrderBook::new(factory);
-
-            let (tx_delta, mut rx_delta) = mpsc::channel(32);
-            let engine = Engine::new(tx_delta);
-
-            // 3. 显式 BookActor 类型
             let (client, _jh) = BookActor::<
                 OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
                 FifoPriceLevel,                                    // L
                 fn() -> FifoPriceLevel,                            // F
                 LocalFileStorage,                                  // S
-            >::run(order_book, 1024, engine);
+            >::actor(1024, 100, engine);
             let client = Arc::new(client);
 
             let scales = Scales::new(100, 1000);

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use bincode::{Decode, Encode, config::standard, encode_into_std_write};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -63,6 +63,13 @@ where
             self.new_level.clone(),
             data.last_update_id,
         ))
+    }
+
+    pub fn load_or_create(&self) -> Result<OrderBook<L, F>> {
+        match self.load() {
+            Result::Ok(book) => Ok(book),
+            Result::Err(_) => Ok(OrderBook::new(self.new_level.clone())),
+        }
     }
 }
 
