@@ -6,7 +6,7 @@ use std::{
 use serde::{Serialize, de::DeserializeOwned};
 use sled::Db;
 
-use crate::{data::duckdb::repository::get_chart_db, utils::path::get_chart_db_path_str};
+use crate::data::duckdb::repository::get_chart_db;
 
 use super::user_db_manager::get_user_chart_manager;
 

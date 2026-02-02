@@ -5,7 +5,6 @@ use std::{
 
 use anyhow::Ok;
 use bincode::{Decode, Encode};
-use log::Level;
 
 use crate::{
     domain::order::Side,

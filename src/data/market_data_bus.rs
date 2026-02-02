@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::OnceLock, time::Duration};
 
 use chrono::Utc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 use crate::{
     data::market_data_connector::{start_binance_ws, start_coinbase_ws},

@@ -6,7 +6,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::env;
 use std::io;
-use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Debug)]

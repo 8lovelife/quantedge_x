@@ -3,7 +3,6 @@ pub mod repository;
 pub mod schema;
 pub mod types;
 
-use rand::rngs::mock;
 pub use repository::{OhlcvRepository, TradeRepository};
 pub use schema::{Ohlcv, Trade};
 

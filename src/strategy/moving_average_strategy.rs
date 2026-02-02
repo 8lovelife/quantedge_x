@@ -4,9 +4,8 @@ use crate::indicators::moving_average::{MovingAverage, MovingAverageFactory, Mov
 
 use super::{
     market_data::MarketData,
-    position::{Position, PositionType, TradePosition},
+    position::{PositionType, TradePosition},
     signal::Signal,
-    strategy_context::StrategyContext,
     strategy_trait::Strategy,
 };
 

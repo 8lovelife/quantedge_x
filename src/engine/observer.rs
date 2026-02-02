@@ -3,7 +3,6 @@ use crate::domain::trade_observer::{TradeObserver, TradeRecord};
 use crate::strategy::direction::Direction;
 use chrono::{DateTime, Utc};
 use std::cell::RefCell;
-use std::ops::Add;
 use std::rc::Rc;
 
 /// 单线程版性能观察者：内部使用 Rc<RefCell<…>> 共享数据

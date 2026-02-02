@@ -1,6 +1,6 @@
 use crate::{
     data::data_feed::DataFeed,
-    domain::{PositionSizer, RiskManager, executor::OrderExecutor},
+    domain::{RiskManager, executor::OrderExecutor},
     processor::SignalProcessor,
     strategy::{strategy_context::StrategyContext, strategy_trait::Strategy},
 };

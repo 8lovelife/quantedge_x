@@ -9,19 +9,15 @@ use crate::{
     risk::risk_manager_factory::RiskManagerFactory,
     sizer::sizer_factory::SizerFactory,
     strategy::{
-        market_data::MarketData,
-        position::{Position, PositionType, TradePosition},
-        signal::Signal,
-        strategy_context::StrategyContext,
-        strategy_factory::StrategyFactory,
-        strategy_trait::Strategy,
+        market_data::MarketData, position::TradePosition, signal::Signal,
+        strategy_factory::StrategyFactory, strategy_trait::Strategy,
     },
 };
 
 use super::{
-    backtest_result::{BacktestResult, Balance, Trade, TradeResultType, TradeType},
+    backtest_result::BacktestResult,
     observer::PerformanceObserver,
-    parameters::{BacktestInput, RunLabStrategy, StrategyRunParams},
+    parameters::{BacktestInput, StrategyRunParams},
     trading_engine::TradingEngine,
 };
 

@@ -1,13 +1,10 @@
 use crate::strategy::{
-    market_data::MarketData,
-    position::{Position, TradePosition},
-    signal::Signal,
-    strategy_factory::StrategyFactory,
-    strategy_trait::Strategy,
+    market_data::MarketData, position::TradePosition, signal::Signal,
+    strategy_factory::StrategyFactory, strategy_trait::Strategy,
 };
 
 use super::{
-    backtest_result::{BacktestResult, Balance, Trade, TradeResultType, TradeType},
+    backtest_result::{BacktestResult, Balance},
     parameters::RunLabStrategy,
 };
 

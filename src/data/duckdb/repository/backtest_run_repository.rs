@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::data::duckdb::schema::backtest_run_history::BacktestRunHistory;
 
-use super::connection::{get_db_conn, get_user_connection_manager};
+use super::connection::get_user_connection_manager;
 
 pub struct BacktestRunHistoryRepository {
     conn: Arc<Mutex<Connection>>,

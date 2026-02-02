@@ -1,7 +1,6 @@
 use serde_json::Value;
 
 use crate::{
-    domain::{OrderRequest, OrderSide},
     indicators::{
         indicator::Indicator,
         moving_average::{SmaIndicator, ema_indicator::EmaIndicator, wma_indicator::WmaIndicator},
@@ -10,10 +9,7 @@ use crate::{
     strategy::position::PositionType,
 };
 
-use super::{
-    market_data::MarketData, position, signal::Signal, strategy_context::StrategyContext,
-    strategy_trait::Strategy,
-};
+use super::{signal::Signal, strategy_trait::Strategy};
 
 pub struct MeanReversionStrategy {
     name: String,

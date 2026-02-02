@@ -4,18 +4,11 @@ use std::{
     thread,
 };
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-use crate::utils::path::get_coin_api_key;
 
 use super::{
-    duckdb::{Ohlcv, OhlcvRepository, repository::ohlcv},
-    fetcher::{
-        common::{OhlcData, fetch_ohlcv_data_coinapi, get_asset_symbol_mapping},
-        fetch_ohlc_data, fetch_volume_data, get_coin_symbol_mapping,
-    },
+    duckdb::{Ohlcv, OhlcvRepository},
+    fetcher::common::{fetch_ohlcv_data_coinapi, get_asset_symbol_mapping},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

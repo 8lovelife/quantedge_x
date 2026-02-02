@@ -1,11 +1,10 @@
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
 
 use axum::{Json, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::{
     api::AppState,

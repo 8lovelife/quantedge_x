@@ -1,8 +1,6 @@
-use anyhow::Ok;
-
 use crate::{
     matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots, reject_reason::RejectReason},
-    models::trade_tick::{TradeTick, TradeTickInternal},
+    models::trade_tick::TradeTickInternal,
     utils::time::now_millis,
 };
 

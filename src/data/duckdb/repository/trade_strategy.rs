@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use duckdb::Connection;
 
-use crate::{data::duckdb::schema::TradeStrategy, utils::get_db_path_str};
+use crate::data::duckdb::schema::TradeStrategy;
 
 use super::connection::get_db_conn;
 

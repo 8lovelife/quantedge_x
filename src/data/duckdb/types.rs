@@ -1,8 +1,5 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-use duckdb::{
-    Connection, params,
-    types::{FromSql, FromSqlError, FromSqlResult, TimeUnit, ValueRef},
-};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
+use duckdb::types::{FromSql, FromSqlError, FromSqlResult, TimeUnit, ValueRef};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

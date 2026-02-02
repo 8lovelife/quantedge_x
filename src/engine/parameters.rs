@@ -1,11 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::strategy::{
-    market_data::MarketData,
-    position::PositionType,
-    strategy_type::{StrategyType, SupportStrategyType},
-};
+use crate::strategy::{market_data::MarketData, strategy_type::StrategyType};
 
 // use super::backtester::PortfolioAsset;
 

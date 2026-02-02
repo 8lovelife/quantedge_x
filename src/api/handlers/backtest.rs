@@ -1,22 +1,13 @@
-use axum::{
-    Json,
-    extract::{Query, State},
-    http::StatusCode,
-};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::AppState,
-    data::{duckdb::schema::backtest_run_history::BacktestRunHistory, sleddb::ChartDB},
+    data::duckdb::schema::backtest_run_history::BacktestRunHistory,
     engine::{
         backtest_result::{Balance, Trade},
         parameters::StrategyRunParameters,
     },
     indicators::calculator::{DistributionData, MonthlyReturnData},
-    service::backtest_service::{MarketDetails, RunBacktestData, RunBacktestReq},
 };
-
-use super::StrategyBacktestRunRequest;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

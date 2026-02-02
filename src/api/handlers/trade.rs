@@ -1,10 +1,10 @@
 use axum::{
     Json,
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::StatusCode,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::api::AppState;
 

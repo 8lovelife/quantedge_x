@@ -1,4 +1,4 @@
-use duckdb::{Connection, Error, OptionalExt, params};
+use duckdb::{Connection, Error, params};
 use std::sync::{Arc, Mutex};
 
 use crate::data::duckdb::schema::LabRunHistory;
