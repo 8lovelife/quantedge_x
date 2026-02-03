@@ -12,7 +12,6 @@ pub struct DepthAggregator {
     bids: BTreeMap<PriceTicks, QtyLots>,
     asks: BTreeMap<PriceTicks, QtyLots>,
 
-    first_update_id: Option<u64>,
     last_update_id: Option<u64>,
 }
 
@@ -22,13 +21,13 @@ impl DepthAggregator {
             top_n,
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
-            first_update_id: None,
             last_update_id: None,
         }
     }
-    pub fn ingest(&mut self, updates: Vec<LevelUpdate>, first: u64, last: u64) {
-        self.first_update_id.get_or_insert(first);
-        self.last_update_id = Some(last);
+    pub fn ingest(&mut self, updates: Vec<LevelUpdate>, update_id: u64) {
+        println!("ingest updates");
+
+        self.last_update_id = Some(update_id);
 
         for u in updates {
             let book = match u.side {
@@ -67,7 +66,6 @@ impl DepthAggregator {
 
         self.bids.clear();
         self.asks.clear();
-        self.first_update_id = None;
         self.last_update_id = None;
 
         Some(OrderBookMessage::Snapshot {

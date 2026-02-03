@@ -3,7 +3,7 @@ use crate::{
     matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LevelChange {
     pub update_id: u64,
     pub level_updates: Vec<LevelUpdate>,
@@ -18,7 +18,7 @@ impl LevelChange {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LevelUpdate {
     pub side: Side,
     pub price: PriceTicks,

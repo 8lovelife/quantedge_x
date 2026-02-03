@@ -16,4 +16,18 @@ impl EngineEvent {
             EngineEvent::TradeEventResult(_) => EventKind::TradeEventResult,
         }
     }
+
+    pub fn level_change(self) -> Option<LevelChange> {
+        match self {
+            EngineEvent::LevelChange(lc) => Some(lc),
+            _ => None,
+        }
+    }
+
+    pub fn trade_event_result(self) -> Option<TradeEventResult> {
+        match self {
+            EngineEvent::TradeEventResult(trade) => Some(trade),
+            _ => None,
+        }
+    }
 }

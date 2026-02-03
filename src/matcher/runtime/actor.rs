@@ -260,26 +260,29 @@ where
 #[cfg(test)]
 mod tests {
 
-    use std::{sync::Arc, time::Duration};
+    use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
 
     use rand::Rng;
     use tokio::time;
 
-    use crate::matcher::{
-        book::{book_ops::OrderBookOps, orderbook::OrderBook},
-        domain::{
-            execution_event::ExecutionEvent,
-            order::{Order, OrderSide, OrderType},
-            price_ticks::PriceTicks,
-            qty_lots::QtyLots,
-            reject_reason::RejectReason,
-            scales::Scales,
-            time_in_force::TimeInForce,
+    use crate::{
+        matcher::{
+            book::{book_ops::OrderBookOps, orderbook::OrderBook},
+            domain::{
+                execution_event::ExecutionEvent,
+                order::{Order, OrderSide, OrderType},
+                price_ticks::PriceTicks,
+                qty_lots::QtyLots,
+                reject_reason::RejectReason,
+                scales::Scales,
+                time_in_force::TimeInForce,
+            },
+            engine::{engine::Engine, engine_event::EngineEvent},
+            policy::price_level::fifo::FifoPriceLevel,
+            runtime::actor::BookActor,
+            storage::localfile_storage::LocalFileStorage,
         },
-        engine::engine::Engine,
-        policy::price_level::fifo::FifoPriceLevel,
-        runtime::actor::BookActor,
-        storage::localfile_storage::LocalFileStorage,
+        models::order_book_publisher::OrderBookPublisher,
     };
 
     pub fn random_order(id: u64, scales: &Scales) -> Order {
@@ -320,6 +323,9 @@ mod tests {
         // let (client, _jh) =
         //     BookActor::<_, FifoPriceLevel, _, LocalFileStorage>::run(order_book, 1024);
 
+        pub type RouteFn = Arc<dyn Fn(EngineEvent) + Send + Sync>;
+        use std::sync::{Arc, Mutex};
+
         // 1. 定义工厂函数指针类型
         fn factory() -> FifoPriceLevel {
             FifoPriceLevel::new()
@@ -328,7 +334,15 @@ mod tests {
         // 2. 显式 OrderBook 类型
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
 
-        let levelchange_handler = Arc::new(|e| println!("LevelChange: {:?}", e));
+        let publisher = Arc::new(Mutex::new(OrderBookPublisher::new(3, 10)));
+        let levelchange_handler: RouteFn = {
+            let publisher = Arc::clone(&publisher);
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::LevelChange(id) = e {
+                    publisher.lock().unwrap().on_level_change(id);
+                }
+            })
+        };
         let trade_tick_handler = Arc::new(|e| println!("TradeTick: {:?}", e));
         let engine = Engine::new(levelchange_handler, trade_tick_handler);
 
@@ -573,9 +587,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_engine_handler() {
-        let levelchange_handler = Arc::new(|e| println!("LevelChange: {:?}", e));
-        let trade_tick_handler = Arc::new(|e| println!("TradeTick: {:?}", e));
-        let engine = Engine::new(levelchange_handler, trade_tick_handler);
+        pub type RouteFn = Arc<dyn Fn(EngineEvent) + Send + Sync>;
+        use std::sync::{Arc, Mutex};
+
+        let publisher = Arc::new(Mutex::new(OrderBookPublisher::new(3, 10)));
+        let handler: RouteFn = {
+            let publisher = Arc::clone(&publisher);
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::LevelChange(id) = e {
+                    publisher.lock().unwrap().on_level_change(id);
+                }
+            })
+        };
+
+        let trade_tick_handler =
+            Arc::new(|e: EngineEvent| println!("TradeTick: {:?}", e.trade_event_result()));
+
+        let engine = Engine::new(handler, trade_tick_handler);
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L

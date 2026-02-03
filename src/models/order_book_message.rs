@@ -14,3 +14,12 @@ pub enum OrderBookMessage {
         end_id: u64,
     },
 }
+
+impl OrderBookMessage {
+    pub fn end_id(&self) -> u64 {
+        match self {
+            OrderBookMessage::Snapshot { last_update_id, .. } => *last_update_id,
+            OrderBookMessage::Delta { end_id, .. } => *end_id,
+        }
+    }
+}

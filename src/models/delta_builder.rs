@@ -60,4 +60,10 @@ impl DeltaBuilder {
 
         msg
     }
+
+    pub fn reset(&mut self) {
+        self.changes.clear();
+        self.first_update_id = None;
+        self.last_update_id = None;
+    }
 }
