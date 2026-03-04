@@ -1,24 +1,30 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Ok;
-use tokio::task::JoinHandle;
+use tokio::{sync::mpsc, task::JoinHandle};
 
-use crate::matcher::{
-    book::book_ops::OrderBookOps,
-    domain::{
-        execution_result::ExecutionResult,
-        match_output::MatchOutput,
-        order::{Order, OrderType},
+use crate::{
+    matcher::{
+        book::book_ops::OrderBookOps,
+        domain::{
+            execution_result::ExecutionResult,
+            match_output::MatchOutput,
+            order::{Order, OrderType},
+        },
+        engine::{
+            engine_event::EngineEvent,
+            event_router::{EventRouter, create_router_with_workers},
+        },
+        executor::{
+            limit_executor::LimitExecutor, market_executor::MarketExecutor,
+            order_executor::OrderTypeExecutor,
+        },
+        policy::tif::tif_policy_factory::obtain_tif_policy,
     },
-    engine::{
-        engine_event::EngineEvent,
-        event_router::{EventRouter, create_router_with_workers},
+    models::{
+        level_update::LevelChange, order_book_message::OrderBookMessage,
+        order_book_publisher::OrderBookPublisher,
     },
-    executor::{
-        limit_executor::LimitExecutor, market_executor::MarketExecutor,
-        order_executor::OrderTypeExecutor,
-    },
-    policy::tif::tif_policy_factory::obtain_tif_policy,
 };
 
 type RouteFn = Arc<dyn Fn(EngineEvent) + Send + Sync>;
@@ -31,6 +37,90 @@ impl Engine {
     pub fn new(levelchange_handler: RouteFn, trade_tick_handler: RouteFn) -> Self {
         let router = create_router_with_workers(levelchange_handler, trade_tick_handler);
         Self { router }
+    }
+
+    pub fn build_with_publisher() -> (Engine, mpsc::Receiver<OrderBookMessage>) {
+        let (change_tx, mut change_rx) = mpsc::channel::<LevelChange>(10000);
+
+        let (ws_tx, ws_rx) = mpsc::channel::<OrderBookMessage>(100);
+
+        let handler: RouteFn = {
+            let tx = change_tx.clone();
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::LevelChange(change) = e {
+                    let _ = tx.try_send(change);
+                }
+            })
+        };
+
+        tokio::spawn(async move {
+            let mut publisher = OrderBookPublisher::new(100);
+            let mut interval = tokio::time::interval(Duration::from_millis(100));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                tokio::select! {
+                    Some(change) = change_rx.recv() => {
+                        publisher.on_level_change(change);
+                    }
+                    _ = interval.tick() => {
+                        if let Some(msg) = publisher.publish_tick() {
+                            if let Err(_) = ws_tx.send(msg).await {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let trade_tick_handler = Arc::new(|_| ());
+        let engine = Engine::new(handler, trade_tick_handler);
+
+        (engine, ws_rx)
+    }
+
+    pub fn build() -> Engine {
+        let (change_tx, mut change_rx) = mpsc::channel::<LevelChange>(10000);
+        let (ws_tx, mut ws_rx) = mpsc::channel::<OrderBookMessage>(1000);
+
+        let handler: RouteFn = {
+            let tx = change_tx.clone();
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::LevelChange(change) = e {
+                    if let Err(e) = tx.try_send(change) {
+                        eprintln!("Warning: Engine is faster than Publisher! {:?}", e);
+                    }
+                }
+            })
+        };
+
+        tokio::spawn(async move {
+            let mut publisher = OrderBookPublisher::new(100);
+            let mut interval = tokio::time::interval(Duration::from_millis(100));
+
+            loop {
+                tokio::select! {
+                    Some(change) = change_rx.recv() => {
+                        publisher.on_level_change(change);
+                    }
+                    _ = interval.tick() => {
+                        if let Some(msg) = publisher.publish_tick() {
+                            let _ = ws_tx.send(msg).await;
+                        }
+                    }
+                }
+            }
+        });
+
+        tokio::spawn(async move {
+            while let Some(msg) = ws_rx.recv().await {
+                println!("Sending to Client: {:?}", msg);
+            }
+        });
+
+        let trade_tick_handler = Arc::new(|e: EngineEvent| println!());
+        Engine::new(handler, trade_tick_handler)
     }
 
     pub fn start(&mut self) -> JoinHandle<()> {

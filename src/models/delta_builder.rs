@@ -1,68 +1,68 @@
+use std::collections::BTreeMap;
+
 use crate::{
     domain::order::Side,
-    models::{
-        level_update::{LevelChange, LevelUpdate},
-        order_book_message::OrderBookMessage,
-    },
+    matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots},
+    models::{level_update::LevelChange, order_book_message::OrderBookMessage},
 };
 
 pub struct DeltaBuilder {
-    changes: Vec<LevelUpdate>,
+    bids: BTreeMap<PriceTicks, Option<QtyLots>>,
+    asks: BTreeMap<PriceTicks, Option<QtyLots>>,
     first_update_id: Option<u64>,
     last_update_id: Option<u64>,
-    threshold: usize,
 }
 
 impl DeltaBuilder {
-    pub fn new(threshold: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            changes: Vec::new(),
+            bids: BTreeMap::new(),
+            asks: BTreeMap::new(),
             first_update_id: None,
             last_update_id: None,
-            threshold,
         }
     }
-    pub fn on_level_updates(&mut self, updates: LevelChange) -> Option<OrderBookMessage> {
-        let update_id = updates.update_id;
-        let level_updates = updates.level_updates;
-        self.first_update_id.get_or_insert(update_id);
+    pub fn on_level_updates(&mut self, change: LevelChange) {
+        let update_id = change.update_id;
+        if self.first_update_id.is_none() {
+            self.first_update_id = Some(update_id);
+        }
         self.last_update_id = Some(update_id);
 
-        self.changes.extend(level_updates);
-
-        if self.changes.len() >= self.threshold {
-            Some(self.flush())
-        } else {
-            None
+        for update in change.level_updates {
+            match update.side {
+                Side::Bid => self.bids.insert(update.price, update.new_qty),
+                Side::Ask => self.asks.insert(update.price, update.new_qty),
+            };
         }
     }
 
-    pub fn flush(&mut self) -> OrderBookMessage {
-        let mut bids = Vec::new();
-        let mut asks = Vec::new();
+    pub fn flush(&mut self) -> Option<OrderBookMessage> {
+        let last_id = self.last_update_id?;
+        let first_id = self.first_update_id?;
 
-        for update in self.changes.drain(..) {
-            match update.side {
-                Side::Bid => bids.push((update.price, update.new_qty)),
-                Side::Ask => asks.push((update.price, update.new_qty)),
-            }
-        }
+        let bids_map = std::mem::take(&mut self.bids);
+        let asks_map = std::mem::take(&mut self.asks);
+
+        let bids = bids_map.into_iter().collect();
+        let asks = asks_map.into_iter().collect();
 
         let msg = OrderBookMessage::Delta {
             bids,
             asks,
-            start_id: self.first_update_id.unwrap(),
-            end_id: self.last_update_id.unwrap(),
+            start_id: first_id,
+            end_id: last_id,
         };
 
         self.first_update_id = None;
         self.last_update_id = None;
 
-        msg
+        Some(msg)
     }
 
     pub fn reset(&mut self) {
-        self.changes.clear();
+        self.bids.clear();
+        self.asks.clear();
         self.first_update_id = None;
         self.last_update_id = None;
     }

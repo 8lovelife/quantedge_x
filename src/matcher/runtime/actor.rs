@@ -334,7 +334,7 @@ mod tests {
         // 2. 显式 OrderBook 类型
         let order_book: OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel> = OrderBook::new(factory);
 
-        let publisher = Arc::new(Mutex::new(OrderBookPublisher::new(3, 10)));
+        let publisher = Arc::new(Mutex::new(OrderBookPublisher::new(3)));
         let levelchange_handler: RouteFn = {
             let publisher = Arc::clone(&publisher);
             Arc::new(move |e: EngineEvent| {
@@ -587,23 +587,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_engine_handler() {
-        pub type RouteFn = Arc<dyn Fn(EngineEvent) + Send + Sync>;
-        use std::sync::{Arc, Mutex};
-
-        let publisher = Arc::new(Mutex::new(OrderBookPublisher::new(3, 10)));
-        let handler: RouteFn = {
-            let publisher = Arc::clone(&publisher);
-            Arc::new(move |e: EngineEvent| {
-                if let EngineEvent::LevelChange(id) = e {
-                    publisher.lock().unwrap().on_level_change(id);
-                }
-            })
-        };
-
-        let trade_tick_handler =
-            Arc::new(|e: EngineEvent| println!("TradeTick: {:?}", e.trade_event_result()));
-
-        let engine = Engine::new(handler, trade_tick_handler);
+        let engine = Engine::build();
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
@@ -621,6 +605,33 @@ mod tests {
         };
 
         let _ = client.place_order(order).await.unwrap();
+        time::sleep(Duration::from_secs(2)).await;
+    }
+
+    #[tokio::test]
+    async fn test_engine_handler_for_some_orders() {
+        let (engine, ws_rx) = Engine::build_with_publisher();
+        let (client, _jh) = BookActor::<
+            OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
+            FifoPriceLevel,                                    // L
+            fn() -> FifoPriceLevel,                            // F
+            LocalFileStorage,                                  // S
+        >::actor(1024, 300, engine);
+
+        tokio::spawn(async move {
+            let mut rx = ws_rx;
+            while let Some(msg) = rx.recv().await {
+                println!("new price level change: {:?}", msg);
+            }
+        });
+        let scales = Scales::new(100, 1000);
+        for id in 0..20000 {
+            let mut order = random_order(id, &scales);
+            order.tif = TimeInForce::GTC;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            let _ = client.place_order(order).await.unwrap();
+        }
+
         time::sleep(Duration::from_secs(2)).await;
     }
 }

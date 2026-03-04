@@ -25,7 +25,6 @@ impl DepthAggregator {
         }
     }
     pub fn ingest(&mut self, updates: Vec<LevelUpdate>, update_id: u64) {
-        println!("ingest updates");
 
         self.last_update_id = Some(update_id);
 
