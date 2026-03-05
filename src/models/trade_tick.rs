@@ -1,11 +1,21 @@
+use std::fmt::{self, Display};
+
+use serde::Serialize;
+
 use crate::matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct TradeTick {
     pub symbol: String,
     pub price: f64,
     pub qty: f64,
     pub ts: i64, // exchange timestamp - ms
+}
+
+impl Display for TradeTick {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{} @ {}]", self.price, self.qty)
+    }
 }
 
 #[derive(Debug, Clone)]

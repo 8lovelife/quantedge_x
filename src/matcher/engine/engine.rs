@@ -10,6 +10,7 @@ use crate::{
             execution_result::ExecutionResult,
             match_output::MatchOutput,
             order::{Order, OrderType},
+            trade_batch::TradeBatch,
         },
         engine::{
             engine_event::EngineEvent,
@@ -39,16 +40,39 @@ impl Engine {
         Self { router }
     }
 
-    pub fn build_with_publisher() -> (Engine, mpsc::Receiver<OrderBookMessage>) {
+    pub fn build_with_publisher() -> (
+        Engine,
+        mpsc::Receiver<OrderBookMessage>,
+        mpsc::Receiver<TradeBatch>,
+    ) {
         let (change_tx, mut change_rx) = mpsc::channel::<LevelChange>(10000);
+        let (ob_out_tx, ob_out_rx) = mpsc::channel::<OrderBookMessage>(100);
 
-        let (ws_tx, ws_rx) = mpsc::channel::<OrderBookMessage>(100);
+        // let (trade_tx, mut trade_rx) = mpsc::channel::<TradeBatch>(5000);
 
-        let handler: RouteFn = {
+        let (trade_out_tx, trade_out_rx) = mpsc::channel::<TradeBatch>(1000);
+
+        let level_change_handler: RouteFn = {
             let tx = change_tx.clone();
             Arc::new(move |e: EngineEvent| {
                 if let EngineEvent::LevelChange(change) = e {
                     let _ = tx.try_send(change);
+                }
+            })
+        };
+        let trade_tick_handler = {
+            let tx = trade_out_tx.clone();
+            let symbol = "BTC/USDT".to_string();
+            let tick_size = 0.1;
+            let lot_size = 0.01;
+
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::TradeEventResult(trade_result) = e {
+                    if let Some(batch) = trade_result.to_trade_batch(&symbol, tick_size, lot_size) {
+                        if let Err(err) = tx.try_send(batch) {
+                            eprintln!("Trade channel full, dropping batch: {:?}", err);
+                        }
+                    }
                 }
             })
         };
@@ -65,19 +89,15 @@ impl Engine {
                     }
                     _ = interval.tick() => {
                         if let Some(msg) = publisher.publish_tick() {
-                            if let Err(_) = ws_tx.send(msg).await {
-                                break;
-                            }
+                            if ob_out_tx.send(msg).await.is_err() { break; }
                         }
                     }
                 }
             }
         });
 
-        let trade_tick_handler = Arc::new(|_| ());
-        let engine = Engine::new(handler, trade_tick_handler);
-
-        (engine, ws_rx)
+        let engine = Engine::new(level_change_handler, trade_tick_handler);
+        (engine, ob_out_rx, trade_out_rx)
     }
 
     pub fn build() -> Engine {

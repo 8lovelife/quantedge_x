@@ -610,7 +610,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_engine_handler_for_some_orders() {
-        let (engine, ws_rx) = Engine::build_with_publisher();
+        let (engine, ob_rx, trade_rx) = Engine::build_with_publisher();
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
@@ -619,11 +619,19 @@ mod tests {
         >::actor(1024, 300, engine);
 
         tokio::spawn(async move {
-            let mut rx = ws_rx;
+            let mut rx = ob_rx;
             while let Some(msg) = rx.recv().await {
                 println!("new price level change: {:?}", msg);
             }
         });
+
+        tokio::spawn(async move {
+            let mut rx = trade_rx;
+            while let Some(msg) = rx.recv().await {
+                println!("new trade ticks: {:?}", msg);
+            }
+        });
+
         let scales = Scales::new(100, 1000);
         for id in 0..20000 {
             let mut order = random_order(id, &scales);

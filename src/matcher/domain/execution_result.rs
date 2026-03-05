@@ -8,7 +8,9 @@ use crate::{
         price_ticks::PriceTicks,
         rest_on_book::RestOnBookType,
         tif_policy_result::TifPolicyResult,
+        trade_batch::TradeBatch,
     },
+    models::trade_tick::TradeTick,
 };
 
 #[derive(Debug, Clone)]
@@ -22,6 +24,32 @@ pub struct ExecutionResult {
 pub struct TradeEventResult {
     pub order: Order,
     pub events: Vec<ExecutionEvent>,
+}
+
+impl TradeEventResult {
+    pub fn to_trade_batch(
+        &self,
+        symbol: &str,
+        tick_size: f64,
+        lot_size: f64,
+    ) -> Option<TradeBatch> {
+        let trades: Vec<TradeTick> = self
+            .events
+            .iter()
+            .filter_map(|event| event.build_trade_tick(symbol))
+            .map(|internal| internal.to_f64(tick_size, lot_size))
+            .collect();
+
+        if trades.is_empty() {
+            return None;
+        }
+
+        Some(TradeBatch {
+            symbol: symbol.to_string(),
+            order_id: self.order.id,
+            trades,
+        })
+    }
 }
 
 impl ExecutionResult {
