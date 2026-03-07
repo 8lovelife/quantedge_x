@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum OrderBookMessage {
     Snapshot {
         bids: Vec<(PriceTicks, QtyLots)>,

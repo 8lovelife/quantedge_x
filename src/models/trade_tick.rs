@@ -1,10 +1,10 @@
 use std::fmt::{self, Display};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::matcher::domain::{price_ticks::PriceTicks, qty_lots::QtyLots};
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TradeTick {
     pub symbol: String,
     pub price: f64,

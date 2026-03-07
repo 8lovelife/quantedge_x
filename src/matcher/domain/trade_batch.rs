@@ -1,10 +1,10 @@
 use std::fmt::{self, Display};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::models::trade_tick::TradeTick;
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TradeBatch {
     pub symbol: String,
     pub order_id: u64,
