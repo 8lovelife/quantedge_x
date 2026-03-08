@@ -266,6 +266,7 @@ mod tests {
     use tokio::time;
 
     use crate::{
+        data::market_data_bus::start_market_data_bus,
         matcher::{
             book::{book_ops::OrderBookOps, orderbook::OrderBook},
             domain::{
@@ -621,14 +622,38 @@ mod tests {
         tokio::spawn(async move {
             let mut rx = ob_rx;
             while let Some(msg) = rx.recv().await {
-                println!("new price level change: {:?}", msg);
+                // println!("new price level change: {:?}", msg);
             }
         });
 
+        let market_tx = start_market_data_bus("USDT".to_string(), 1000).await;
+        let tx = market_tx.clone();
         tokio::spawn(async move {
             let mut rx = trade_rx;
             while let Some(msg) = rx.recv().await {
-                println!("new trade ticks: {:?}", msg);
+                for tick in msg.trades {
+                    let _ = tx.send(tick);
+                }
+            }
+        });
+
+        let raw_rx = market_tx.subscribe();
+
+        tokio::spawn(async move {
+            let mut rx = raw_rx;
+
+            loop {
+                match rx.recv().await {
+                    Ok(msg) => {
+                        println!("new trade ticks: {:?}", msg);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        eprintln!("lagged {} messages", n);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        break;
+                    }
+                }
             }
         });
 

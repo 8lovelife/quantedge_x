@@ -62,7 +62,7 @@ impl Engine {
         };
         let trade_tick_handler = {
             let tx = trade_out_tx.clone();
-            let symbol = "BTC/USDT".to_string();
+            let symbol = "AAAA/USDT".to_string();
             let tick_size = 0.1;
             let lot_size = 0.01;
 
