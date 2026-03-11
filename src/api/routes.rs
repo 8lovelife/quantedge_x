@@ -4,6 +4,7 @@ use crate::{
         TradeStrategyRepository,
         connection::{UserConnectionManager, get_user_connection_manager},
     },
+    matcher::runtime::book_client::BookClient,
     service::{backtest_service::BacktestService, user_auth_service::UserAuthService},
     ws::push_stream::{BroadcastMap, handle_web_socket},
 };
@@ -36,9 +37,10 @@ pub struct AppState {
     pub backtest_service: Arc<BacktestService>,
     // pub build_strategy_service: Arc<StrategyService>,
     pub user_auth_service: Arc<UserAuthService>,
+    pub client: BookClient,
 }
 
-pub fn create_router() -> Router {
+pub fn create_router(client: BookClient) -> Router {
     let user_connection_manager = get_user_connection_manager();
     let ohlcv_repo = Arc::new(OhlcvRepository::new(None).unwrap());
     let trade_repo = Arc::new(TradeRepository::new(None).unwrap());
@@ -60,6 +62,7 @@ pub fn create_router() -> Router {
         backtest_service,
         // build_strategy_service,
         user_auth_service,
+        client,
     };
 
     let broadcast_map: BroadcastMap = Arc::new(RwLock::new(HashMap::new()));

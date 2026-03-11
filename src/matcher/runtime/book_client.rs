@@ -5,6 +5,7 @@ use crate::matcher::{
     runtime::cmd::Cmd,
 };
 
+#[derive(Clone)]
 pub struct BookClient {
     tx: mpsc::Sender<Cmd>,
 }

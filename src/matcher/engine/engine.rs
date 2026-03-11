@@ -4,6 +4,7 @@ use anyhow::Ok;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::{
+    data::market_data_bus::start_market_data_bus,
     matcher::{
         book::book_ops::OrderBookOps,
         domain::{
@@ -38,6 +39,72 @@ impl Engine {
     pub fn new(levelchange_handler: RouteFn, trade_tick_handler: RouteFn) -> Self {
         let router = create_router_with_workers(levelchange_handler, trade_tick_handler);
         Self { router }
+    }
+
+    pub fn start_with_publisher() -> Engine {
+        let (change_tx, mut change_rx) = mpsc::channel::<LevelChange>(10000);
+        let (ob_out_tx, ob_out_rx) = mpsc::channel::<OrderBookMessage>(100);
+
+        // let (trade_tx, mut trade_rx) = mpsc::channel::<TradeBatch>(5000);
+
+        let (trade_out_tx, trade_out_rx) = mpsc::channel::<TradeBatch>(1000);
+
+        let level_change_handler: RouteFn = {
+            let tx = change_tx.clone();
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::LevelChange(change) = e {
+                    let _ = tx.try_send(change);
+                }
+            })
+        };
+        let trade_tick_handler = {
+            let tx = trade_out_tx.clone();
+            let symbol = "AAAA/USDT".to_string();
+            let tick_size = 0.1;
+            let lot_size = 0.01;
+
+            Arc::new(move |e: EngineEvent| {
+                if let EngineEvent::TradeEventResult(trade_result) = e {
+                    if let Some(batch) = trade_result.to_trade_batch(&symbol, tick_size, lot_size) {
+                        if let Err(err) = tx.try_send(batch) {
+                            eprintln!("Trade channel full, dropping batch: {:?}", err);
+                        }
+                    }
+                }
+            })
+        };
+
+        tokio::spawn(async move {
+            let mut publisher = OrderBookPublisher::new(100);
+            let mut interval = tokio::time::interval(Duration::from_millis(100));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                tokio::select! {
+                    Some(change) = change_rx.recv() => {
+                        publisher.on_level_change(change);
+                    }
+                    _ = interval.tick() => {
+                        if let Some(msg) = publisher.publish_tick() {
+                            if ob_out_tx.send(msg).await.is_err() { break; }
+                        }
+                    }
+                }
+            }
+        });
+
+        tokio::spawn(async move {
+            let market_tx = start_market_data_bus("USDT".to_string(), 1000).await;
+            let mut rx = trade_out_rx;
+            while let Some(msg) = rx.recv().await {
+                for tick in msg.trades {
+                    let _ = market_tx.send(tick);
+                }
+            }
+        });
+
+        let engine = Engine::new(level_change_handler, trade_tick_handler);
+        engine
     }
 
     pub fn build_with_publisher() -> (
