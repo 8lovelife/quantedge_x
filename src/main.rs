@@ -1,10 +1,9 @@
 use quantedge_x::{
     api::create_router,
-    data::market_data_bus::start_market_data_bus,
     matcher::{
-        book::orderbook::OrderBook, engine::engine::Engine,
+        book::orderbook::OrderBook, domain::qty_lots::QtyLots, engine::engine::Engine,
         policy::price_level::fifo::FifoPriceLevel, runtime::actor::BookActor,
-        storage::localfile_storage::LocalFileStorage,
+        storage::localfile_storage::LocalFileStorage, strategies::simple_mm::SimpleMarketMaker,
     },
     ws::push_stream::start_ws_server,
 };
@@ -21,7 +20,16 @@ async fn main() {
         FifoPriceLevel,                                    // L
         fn() -> FifoPriceLevel,                            // F
         LocalFileStorage,                                  // S
-    >::actor(1024, 300, engine);
+    >::actor(1024, 300, engine.engine);
+
+    SimpleMarketMaker::new(
+        client.clone(),
+        "BTC/USDT".to_string(),
+        20000,
+        -4,
+        QtyLots(1),
+    )
+    .start();
 
     // Get server configuration from environment or use defaults
     let host = env::var("API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());

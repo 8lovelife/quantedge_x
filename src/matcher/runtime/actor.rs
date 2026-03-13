@@ -7,13 +7,13 @@ use log::info;
 use tokio::sync::mpsc;
 
 use crate::matcher::{
-        book::{book_manager::OrderBookManager, book_ops::OrderBookOps, orderbook::OrderBook},
-        domain::book_info::BookInfo,
-        engine::engine::Engine,
-        policy::price_level::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
-        runtime::{book_client::BookClient, cmd::Cmd},
-        storage::{Storage, localfile_storage::LocalFileStorage},
-    };
+    book::{book_manager::OrderBookManager, book_ops::OrderBookOps, orderbook::OrderBook},
+    domain::book_info::BookInfo,
+    engine::engine::Engine,
+    policy::price_level::{fifo::FifoPriceLevel, price_level::PriceLevelPolicy},
+    runtime::{book_client::BookClient, cmd::Cmd},
+    storage::{Storage, localfile_storage::LocalFileStorage},
+};
 
 pub struct BookActor<T: OrderBookOps, L, F, S>
 where
@@ -267,6 +267,7 @@ mod tests {
 
     use crate::{
         data::market_data_bus::start_market_data_bus,
+        engine,
         matcher::{
             book::{book_ops::OrderBookOps, orderbook::OrderBook},
             domain::{
@@ -282,6 +283,7 @@ mod tests {
             policy::price_level::fifo::FifoPriceLevel,
             runtime::actor::BookActor,
             storage::localfile_storage::LocalFileStorage,
+            strategies::simple_mm::SimpleMarketMaker,
         },
         models::order_book_publisher::OrderBookPublisher,
     };
@@ -528,7 +530,6 @@ mod tests {
         let levelchange_handler = Arc::new(|e| println!("LevelChange: {:?}", e));
         let trade_tick_handler = Arc::new(|e| println!("TradeTick: {:?}", e));
         let engine = Engine::new(levelchange_handler, trade_tick_handler);
-
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
@@ -588,17 +589,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_engine_handler() {
-        let engine = Engine::build();
+        let engine = Engine::start_with_publisher();
         let (client, _jh) = BookActor::<
             OrderBook<FifoPriceLevel, fn() -> FifoPriceLevel>, // T
             FifoPriceLevel,                                    // L
             fn() -> FifoPriceLevel,                            // F
             LocalFileStorage,                                  // S
-        >::actor(1024, 300, engine);
+        >::actor(1024, 300, engine.engine);
+
+        let market_tx = start_market_data_bus("BTC/USDT".to_string(), 10);
+        let mut market = market_tx.subscribe();
+        tokio::spawn(async move {
+            while let Ok(tick) = market.recv().await {
+                println!("market tick: {:?}", tick);
+            }
+        });
 
         let order = Order {
             id: 2,
-            side: OrderSide::Sell,
+            side: OrderSide::Buy,
             px: PriceTicks(2000),
             qty: QtyLots(30),
             order_type: OrderType::Limit,
@@ -606,7 +615,28 @@ mod tests {
         };
 
         let _ = client.place_order(order).await.unwrap();
-        time::sleep(Duration::from_secs(2)).await;
+
+        let order = Order {
+            id: 1,
+            side: OrderSide::Sell,
+            px: PriceTicks(2000),
+            qty: QtyLots(20),
+            order_type: OrderType::Limit,
+            tif: TimeInForce::GTC,
+        };
+
+        let _ = client.place_order(order).await.unwrap();
+
+        SimpleMarketMaker::new(
+            client.clone(),
+            "BTC/USDT".to_string(),
+            20000,
+            -4,
+            QtyLots(1),
+        )
+        .start();
+
+        time::sleep(Duration::from_secs(2000)).await;
     }
 
     #[tokio::test]
@@ -626,7 +656,7 @@ mod tests {
             }
         });
 
-        let market_tx = start_market_data_bus("USDT".to_string(), 1000).await;
+        let market_tx = start_market_data_bus("USDT".to_string(), 1000);
         let tx = market_tx.clone();
         tokio::spawn(async move {
             let mut rx = trade_rx;

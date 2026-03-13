@@ -1,6 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
 use anyhow::Ok;
+use chrono::Utc;
+use log::info;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::{
@@ -15,6 +17,7 @@ use crate::{
         },
         engine::{
             engine_event::EngineEvent,
+            engine_runtime::EngineRuntime,
             event_router::{EventRouter, create_router_with_workers},
         },
         executor::{
@@ -41,11 +44,9 @@ impl Engine {
         Self { router }
     }
 
-    pub fn start_with_publisher() -> Engine {
+    pub fn start_with_publisher() -> EngineRuntime {
         let (change_tx, mut change_rx) = mpsc::channel::<LevelChange>(10000);
         let (ob_out_tx, ob_out_rx) = mpsc::channel::<OrderBookMessage>(100);
-
-        // let (trade_tx, mut trade_rx) = mpsc::channel::<TradeBatch>(5000);
 
         let (trade_out_tx, trade_out_rx) = mpsc::channel::<TradeBatch>(1000);
 
@@ -59,7 +60,7 @@ impl Engine {
         };
         let trade_tick_handler = {
             let tx = trade_out_tx.clone();
-            let symbol = "AAAA/USDT".to_string();
+            let symbol = "BTC/USDT".to_string();
             let tick_size = 0.1;
             let lot_size = 0.01;
 
@@ -93,8 +94,8 @@ impl Engine {
             }
         });
 
-        tokio::spawn(async move {
-            let market_tx = start_market_data_bus("USDT".to_string(), 1000).await;
+        let trade_task = tokio::spawn(async move {
+            let market_tx = start_market_data_bus("BTC/USDT".to_string(), 1000);
             let mut rx = trade_out_rx;
             while let Some(msg) = rx.recv().await {
                 for tick in msg.trades {
@@ -104,7 +105,7 @@ impl Engine {
         });
 
         let engine = Engine::new(level_change_handler, trade_tick_handler);
-        engine
+        EngineRuntime { engine, trade_task }
     }
 
     pub fn build_with_publisher() -> (
@@ -129,7 +130,7 @@ impl Engine {
         };
         let trade_tick_handler = {
             let tx = trade_out_tx.clone();
-            let symbol = "AAAA/USDT".to_string();
+            let symbol = "BTC/USDT".to_string();
             let tick_size = 0.1;
             let lot_size = 0.01;
 

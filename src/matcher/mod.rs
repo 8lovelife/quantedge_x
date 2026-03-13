@@ -5,3 +5,4 @@ pub mod executor;
 pub mod policy;
 pub mod runtime;
 pub mod storage;
+pub mod strategies;

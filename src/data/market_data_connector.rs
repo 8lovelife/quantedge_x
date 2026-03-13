@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use rand::{Rng, SeedableRng, rngs::StdRng};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 use crate::models::trade_tick::TradeTick;
 

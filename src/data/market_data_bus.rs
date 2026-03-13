@@ -10,10 +10,7 @@ use crate::{
 
 static MARKET_DATA_BUS: OnceLock<broadcast::Sender<TradeTick>> = OnceLock::new();
 
-pub async fn start_market_data_bus(
-    symbol: String,
-    interval_ms: u64,
-) -> broadcast::Sender<TradeTick> {
+pub fn start_market_data_bus(symbol: String, interval_ms: u64) -> broadcast::Sender<TradeTick> {
     MARKET_DATA_BUS
         .get_or_init(|| {
             let (tx, _) = broadcast::channel::<TradeTick>(1000);

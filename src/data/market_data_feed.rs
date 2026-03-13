@@ -59,7 +59,7 @@ pub async fn symbol_kline_task(
     interval_ms: u64,
     broadcast_tx: broadcast::Sender<MarketPriceData>,
 ) {
-    let tick_bus = start_market_data_bus(symbol.to_string(), interval_ms).await;
+    let tick_bus = start_market_data_bus(symbol.to_string(), interval_ms);
     let raw_rx = tick_bus.subscribe();
 
     let (combine_tx, _) = broadcast::channel::<TradeTick>(1000);
@@ -90,7 +90,7 @@ mod tests {
     use crate::{
         data::market_data_feed::symbol_kline_task, models::market_price_data::MarketPriceData,
     };
-        
+
     #[tokio::test]
     async fn test_market_feed() {
         let (tick_broadcast_tx, _) = broadcast::channel::<MarketPriceData>(1000);
